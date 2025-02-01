@@ -9,7 +9,7 @@
 # - hyfm
 # - baseline
 
-set -x
+# set -x
 
 search_dir=$1
 script_loc=$2
@@ -28,4 +28,5 @@ if [[ "$technique" != "f3m" && "$technique" != "f3m-adapt" && "$technique" != "h
     exit 1
 fi
 
-find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$(dirname "$1")" "$2" | tee ./script_log.txt' "$script_loc" {} "$technique" \;
+# find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$(dirname "$1")" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;
+find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$1" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;

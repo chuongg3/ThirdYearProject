@@ -18,6 +18,12 @@ fi
 
 # Set the benchmark directory
 BENCHMARK_LOC=$1
+# If bitcode file is in build directory, ignore it
+if [[ "$BENCHMARK_LOC" =~ build/_main_._all_._files_._linked_.bc$ ]]; then
+    echo "Benchmark directory ends with build/_main_._all_._files_._linked_.bc. Exiting script."
+    exit 1
+fi
+
 BENCHMARK_DIR=$(dirname "$BENCHMARK_LOC")
 BENCHMARK=$(basename "$BENCHMARK_DIR")
 

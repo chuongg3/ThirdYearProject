@@ -29,4 +29,4 @@ if [[ "$technique" != "f3m" && "$technique" != "f3m-adapt" && "$technique" != "h
 fi
 
 # find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$(dirname "$1")" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;
-find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$1" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;
+find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;

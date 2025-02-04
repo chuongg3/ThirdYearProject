@@ -14,8 +14,10 @@
 search_dir=$1
 script_loc=$2
 
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <benchmark_base_directory> <script_location> <technique>"
+if [ "$#" -eq 4 ]; then
+    DBLocation=$4
+elif [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <benchmark_base_directory> <script_location> <technique> [DBLocation]"
     exit 1
 fi
 
@@ -30,4 +32,9 @@ fi
 
 # find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '. "$0" "$(dirname "$1")" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;
 # find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2" | tee ./log/script_log.txt' "$script_loc" {} "$technique" \;
-find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2"' "$script_loc" {} "$technique" \;
+# find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2"' "$script_loc" {} "$technique" \;
+if [ "$#" -eq 4 ]; then
+    find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2" "$3"' "$script_loc" {} "$technique" "$DBLocation" \;
+else
+    find "$search_dir" -type f -name "_main_._all_._files_._linked_.bc" -exec sh -c '"$0" "$1" "$2"' "$script_loc" {} "$technique" \;
+fi

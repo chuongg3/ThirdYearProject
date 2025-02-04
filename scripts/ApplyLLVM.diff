@@ -428,7 +428,7 @@ index 000000000000..a6d840398090
 +#endif // DATABASEMANAGER_H
 \ No newline at end of file
 diff --git a/llvm/lib/Transforms/IPO/FunctionMerging.cpp b/llvm/lib/Transforms/IPO/FunctionMerging.cpp
-index e986bc0d03c6..7a9f4e6815b2 100644
+index e986bc0d03c6..b20914a4d29f 100644
 --- a/llvm/lib/Transforms/IPO/FunctionMerging.cpp
 +++ b/llvm/lib/Transforms/IPO/FunctionMerging.cpp
 @@ -122,6 +122,8 @@
@@ -466,7 +466,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
  
  template <class T> class MatcherReport {
  private:
-@@ -2356,14 +2359,54 @@ public:
+@@ -2356,14 +2359,69 @@ public:
    }
  
    void report() const {
@@ -483,11 +483,26 @@ index e986bc0d03c6..7a9f4e6815b2 100644
      char distance_mh_str[20];
  
 +    // Initialise the Database
++    string DBLOC;
 +    DatabaseManager dbm;
 +    if (DatabaseInfo) {
-+      if (dbm.openDB() != 0) {
-+        errs() << "Error: Unable to open the database\n";
-+        DatabaseInfo = false;
++      // If database location not given, use default location
++      if (getenv("DBLOC") == nullptr) {
++        dbgs() << "Empty DBLOC\n";
++        dbm = DatabaseManager();
++        if (dbm.openDB() != 0) {
++          errs() << "Error: Unable to open the database\n";
++          DatabaseInfo = false;
++        }
++      }
++      // Use given database location
++      else {
++        dbgs() << "Non-Empty DBLOC\n";
++        dbm = DatabaseManager(getenv("DBLOC"));
++        if (dbm.openDB() != 0) {
++          errs() << "Error: Unable to open the database custom location\n";
++          DatabaseInfo = false;
++        }
 +      }
 +    }
 +
@@ -522,7 +537,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
      }
  
      std::string Name("_m_f_");
-@@ -2379,11 +2422,33 @@ public:
+@@ -2379,11 +2437,33 @@ public:
          std::snprintf(distance_mh_str, 20, "%.5f", distance_mh);
          errs() << "F1: " << it1 - candidates.cbegin() << " + "
                 << "F2: " << it2 - candidates.cbegin() << " "
@@ -539,7 +554,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
 +
 +        if (DatabaseInfo) {
 +          auto MergedFunction = Result.getMergedFunction();
-+          auto MERGE_TECHNIQUE = getenv("MERGE_TECHNIQUE");
++          auto MERGE_TECHNIQUE = getenv("TECHNIQUE");
 +          if (MergedFunction != nullptr) {
 +            dbgs() << "Function Merged Successfully\n";
 +            // Get the estimated function size
@@ -559,7 +574,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
    }
  };
  
-@@ -2514,12 +2579,28 @@ bool AcrossBlocks;
+@@ -2514,12 +2594,28 @@ bool AcrossBlocks;
  
  FunctionMergeResult
  FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const FunctionMergingOptions &Options) {
@@ -589,7 +604,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
  
  #ifdef TIME_STEPS_DEBUG
    TimeAlign.startTimer();
-@@ -2701,6 +2782,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2701,6 +2797,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
        TimeAlign.stopTimer();
        time_align_end = std::chrono::steady_clock::now();
  #endif
@@ -598,7 +613,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
        return ErrorResponse;
      }
      
-@@ -2714,6 +2797,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2714,6 +2812,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
    if (!ProfitableFn && !ReportStats) {
      if (Verbose)
        errs() << "Skipped: Not profitable enough!!\n";
@@ -607,7 +622,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
      return ErrorResponse;
    }
  
-@@ -2760,8 +2845,477 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2760,8 +2860,477 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
      errs() << "Matches: " << NumMatches << ", " << TotalEntries << ", " << ( (double) NumMatches/ (double) TotalEntries) << "\n";
    }
    
@@ -1086,7 +1101,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
  
    // errs() << "Code Gen\n";
  #ifdef ENABLE_DEBUG_CODE
-@@ -2847,6 +3401,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2847,6 +3416,8 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
  #ifdef TIME_STEPS_DEBUG
      TimeParam.stopTimer();
  #endif
@@ -1095,7 +1110,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
      return ErrorResponse;
    }
    FunctionType *FTy =
-@@ -2933,6 +3489,7 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2933,6 +3504,7 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
        // MergedFunc->dump();
        MergedFunc->eraseFromParent();
        MergedFunc = nullptr;
@@ -1103,7 +1118,7 @@ index e986bc0d03c6..7a9f4e6815b2 100644
        if (Debug)
          errs() << "ERROR: Failed to generate the merged function!\n";
      }
-@@ -2945,6 +3502,10 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
+@@ -2945,6 +3517,10 @@ FunctionMerger::merge(Function *F1, Function *F2, std::string Name, const Functi
    Result.setArgumentMapping(F1, ParamMap1);
    Result.setArgumentMapping(F2, ParamMap2);
    Result.setFunctionIdArgument(FuncId != nullptr);

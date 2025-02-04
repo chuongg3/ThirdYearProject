@@ -6,12 +6,15 @@
 # First Parameter: Directory of benchmark
 # Sets environment variable of benchmark name and runs the benchmark
 
-set -x
+# set -x
 
 LLVM_DIR="/home_alt/m19364tg/ThirdYearProject/build/bin"
+# LLVM_DIR="/home/chuongg3/Projects/TYP/build/bin"
 
 # Check if the number of arguments is correct
-if [ "$#" -ne 2 ]; then
+if [ "$#" -eq 3 ]; then
+    DBLocation=$3
+elif [ "$#" -ne 2 ]; then
     echo "Usage: $0 <benchmark_directory> <technique>"
     exit 1
 fi
@@ -37,8 +40,11 @@ MERGE_TECHNIQUE=$2
 
 # Run the benchmark
 echo "Running benchmark: $BENCHMARK"
-/usr/bin/make FROM_SCRATCH=false REPORT=true LLVM_DIR=$LLVM_DIR TECHNIQUE=$2 MERGE_TECHNIQUE="$MERGE_TECHNIQUE" BENCH="$BENCHMARK" 2>&1
-
+if [ "$#" -eq 3 ]; then
+    /usr/bin/make FROM_SCRATCH=false REPORT=true LLVM_DIR=$LLVM_DIR TECHNIQUE=$2 MERGE_TECHNIQUE="$MERGE_TECHNIQUE" BENCH="$BENCHMARK" DBLOC="$DBLocation" 2>&1
+else
+    /usr/bin/make FROM_SCRATCH=false REPORT=true LLVM_DIR=$LLVM_DIR TECHNIQUE=$2 MERGE_TECHNIQUE="$MERGE_TECHNIQUE" BENCH="$BENCHMARK" 2>&1
+fi
 # echo "Finished running benchmark: $BENCHMARK"
 
 # Unset the benchmark directory

@@ -3,3 +3,4 @@ build/
 llvm-project/
 f3m_exp/
 scripts/log
+IR2Vec/

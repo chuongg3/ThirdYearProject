@@ -374,7 +374,7 @@ index 000000000000..a6d840398090
 +            "    EstimatedSize REAL,\n"
 +            "    Encoding BLOB,\n"
 +            "    PRIMARY KEY (BenchmarkID, FunctionID),\n"
-+            "    FOREIGN KEY (BenchmarkID) REFERENCES Benchmarks(BenchmarkID)\n"
++            "    FOREIGN KEY (BenchmarkID) REFERENCES Benchmarks(ROWID)\n"
 +            ");\n";
 +
 +        const char* sqlCreatePairwiseTable = 
@@ -391,7 +391,7 @@ index 000000000000..a6d840398090
 +            "    MergedLLVMIR TEXT,\n"
 +            "    MergedEncoding TEXT,\n"
 +            "    PRIMARY KEY (BenchmarkID, Function1ID, Function2ID, Technique),\n"
-+            "    FOREIGN KEY (BenchmarkID) REFERENCES Benchmarks(BenchmarkID),\n"
++            "    FOREIGN KEY (BenchmarkID) REFERENCES Benchmarks(ROWID),\n"
 +            "    FOREIGN KEY (Function1ID) REFERENCES Functions(FunctionID),\n"
 +            "    FOREIGN KEY (Function2ID) REFERENCES Functions(FunctionID)\n"
 +            ");\n";

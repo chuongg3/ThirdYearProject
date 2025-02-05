@@ -22,7 +22,9 @@ BENCHMARK=$(basename "$BENCHMARK_DIR")
 # Encode function using ir2vec
 ir2vec_bin=$2
 EMBLocation="./Embedding/$BENCHMARK.emb"
-$ir2vec_bin "$BENCHMARK_LOC" -fa -level=f -o "$EMBLocation"
+if [ ! -f "$EMBLocation" ]; then
+    $ir2vec_bin "$BENCHMARK_LOC" -fa -level=f -o "$EMBLocation"
+fi
 
 # Database Location
 database_loc=$3

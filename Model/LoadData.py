@@ -75,7 +75,8 @@ def getDatasetSize(DB_File, condition):
         row = cursor.fetchone()
         return row[0]
 
-def FetchEncodingDataset(DB_FILE, condition, score = 0):
+# Fetches the dataset for the tensorflow dataset slowly
+def FetchEncodingDataset(DB_FILE, condition, score = 0, batch_size = 1000):
     query = f"""SELECT F1.Encoding AS Encoding1, F2.Encoding AS Encoding2, FunctionPairs.AlignmentScore
 FROM FunctionPairs
 JOIN Functions F1 ON
@@ -86,13 +87,13 @@ FunctionPairs.BenchmarkID = F2.BenchmarkID AND
 FunctionPairs.Function2ID = F2.FunctionID
 WHERE {condition}"""
 
+    debugLoop = 10000 if score == 1 else 100000
+
     with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
-
         print(f"Start of dataset (Score: {score})")
         count = 0
-        batch_size = 1000  # Adjust the batch size as needed
         while True:
             rows = cursor.fetchmany(batch_size)
             if not rows:
@@ -104,15 +105,16 @@ WHERE {condition}"""
                 weight = (1/1000) if AlignmentScore == 0 else (999/1000)
 
                 count += 1
-                if (count % 10000 == 0):
+                if (count % debugLoop == 0):
                     print(f"Dataset Index (Score: {score}): {count}")
                 yield (encoding1, encoding2), AlignmentScore, weight
         print(f"Size of dataset (Score: {score}): {count}")
 
-def CreateEncodingDataset(DB_FILE, score = 0, batch_size = 32, split_size = (0.7, 0.1, 0.2)):
+# Create a tensorflow dataset
+def CreateEncodingDataset(DB_FILE, score = 0, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
     # Get the condition to filter out the SQL query
     if (score == 0):
-        condition = "FunctionPairs.AlignmentScore = 0"
+        condition = f"FunctionPairs.AlignmentScore = 0"
     elif (score == 1):
         condition = f"FunctionPairs.AlignmentScore = 1"
     else:
@@ -120,7 +122,7 @@ def CreateEncodingDataset(DB_FILE, score = 0, batch_size = 32, split_size = (0.7
 
     # Create the dataset
     dataset = tf.data.Dataset.from_generator(
-        lambda: FetchEncodingDataset(DB_FILE, condition, score),
+        lambda: FetchEncodingDataset(DB_FILE, condition, score, sqlite_batch),
         output_signature=(
             (tf.TensorSpec(shape=(300,), dtype=tf.float32),
              tf.TensorSpec(shape=(300,), dtype=tf.float32)),
@@ -149,5 +151,3 @@ def CreateEncodingDataset(DB_FILE, score = 0, batch_size = 32, split_size = (0.7
     test_dataset = test_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
     return train_dataset, val_dataset, test_dataset
-
-    

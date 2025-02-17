@@ -5,3 +5,4 @@ f3m_exp/
 scripts/log
 IR2Vec/
 scripts/GetEncoding/log
+__pycache__/

@@ -1,6 +1,7 @@
 import sqlite3
 import os
 
+# Connect to the database
 def connectDB(DB_FILE):
     if not os.path.isfile(DB_FILE):
         raise FileNotFoundError(f"The database file {DB_FILE} does not exist.")
@@ -8,6 +9,7 @@ def connectDB(DB_FILE):
 
 # Generate temporary table for each alignment score
 def generateTempTable(conn, score):
+    # Different filtering conditions for each alignment score
     if score != 0 and score != 1:
         condition = f"AlignmentScore > 0 AND AlignmentScore < 1"
         name = "NonZero"
@@ -15,67 +17,12 @@ def generateTempTable(conn, score):
         condition = f"AlignmentScore = {score}"
         name = score
 
+    # Create and insert relevant data into temporary table
     select_query = f"""SELECT * FROM FunctionPairs WHERE {condition}"""
     create_table_query = f"""CREATE TEMP TABLE FunctionPairs_{name} AS {select_query}"""    
 
-
     cursor = conn.cursor()
-    # Create a temporary table and relevant data to each table
     cursor.execute(create_table_query)
-
-# Insert a random column to the table and insert a RANDOM() value
-def insertRandomColumn(conn, table_name):
-    print(f"Inserting random column into {table_name}")
-    cursor = conn.cursor()
-    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN RANDOM_SPLIT REAL")
-    cursor.execute(f"UPDATE {table_name} SET RANDOM_SPLIT = RANDOM()")
-
-# Insert a random column to the table and insert a RANDOM() value
-def insertShuffledROWIDColumn(conn, table_name):
-    print(f"Inserting shuffled ROWID into {table_name}")
-
-    # Add a column to store the shuffled ROWID
-    print(f"Adding SHUFFLED_ID column to {table_name}")
-    cursor = conn.cursor()
-    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN SHUFFLED_ID INTEGER")
-
-
-    # ======================
-    # print("Creating temporary table and shuffling ROWID")
-    # # Create a temporary table to store the shuffled ROWID
-    # query = f"""CREATE TEMP TABLE SHUFFLED_IDS AS
-    #             SELECT ROWID AS original_id, ROW_NUMBER() OVER () AS num
-    #             FROM {table_name}
-    #             ORDER BY RANDOM()"""
-    # cursor.execute(query)
-
-    # # Update the shuffled ROWID
-    # print("Updating the table with shuffled ROWID")
-    # query = f"""UPDATE {table_name}
-    #             SET SHUFFLED_ID = (SELECT num FROM SHUFFLED_IDS
-    #             WHERE SHUFFLED_IDS.original_id = {table_name}.ROWID)"""
-    # cursor.execute(query)
-    # # conn.commit()
-
-    # print("Deleting temporary table")
-    # # Delete the temporary table
-    # cursor.execute("DROP TABLE temp.SHUFFLED_IDS")
-
-
-    #  ======================
-
-    # Update the shuffled ROWID
-    print("Updating the table with shuffled ROWID")
-    query = f"""WITH shuffled AS (
-                SELECT ROWID, 
-                ROW_NUMBER() OVER () AS num
-                FROM (SELECT ROWID FROM {table_name} ORDER BY RANDOM()))
-                UPDATE {table_name}
-                SET SHUFFLED_ID = (SELECT num FROM shuffled WHERE shuffled.ROWID = {table_name}.ROWID);"""
-    cursor.execute(query)
-
-
-
 
 # Initialise database with tables
 def initialiseTable(conn, DBName):
@@ -156,25 +103,26 @@ def detachDatabase(conn, DBName):
         print(e)
         return False
 
-def splitFunctionPairs(conn, src_table_name, split = (0.7, 0.1, 0.2)):
-    print(f"Splitting {src_table_name} into TEST, TRAIN, and VAL")
+# Insert a shuffled ROWID column into the specified table
+def insertShuffledROWIDColumn(conn, table_name):
+    print(f"Inserting shuffled ROWID into {table_name}")
 
-    columns = f"BenchmarkID, Function1ID, Function2ID, Technique, AlignmentScore, FrequencyDistance, MinHashDistance, MergeSuccessful, MergedEstimatedSize, MergedLLVMIR, MergedEncoding"
-    threshold1 = split[0]
-    threshold2 = split[0] + split[1]
-
-    train_query = f"INSERT INTO TRAIN.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE RANDOM_SPLIT < {threshold1}"
-    validation_query = f"INSERT INTO VAL.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE RANDOM_SPLIT >= {threshold1} AND RANDOM_SPLIT < {threshold2}"
-    test_query = f"INSERT INTO TEST.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE RANDOM_SPLIT >= {threshold2}"
-
+    # Add a column to store the shuffled ROWID
+    print(f"Adding SHUFFLED_ID column to {table_name}")
     cursor = conn.cursor()
-    cursor.execute(train_query)
-    cursor.execute(validation_query)
-    cursor.execute(test_query)
-    conn.commit()
+    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN SHUFFLED_ID INTEGER")
 
-    return True
+    # Update the shuffled ROWID
+    print("Updating the table with shuffled ROWID")
+    query = f"""WITH shuffled AS (
+                SELECT ROWID, 
+                ROW_NUMBER() OVER () AS num
+                FROM (SELECT ROWID FROM {table_name} ORDER BY RANDOM()))
+                UPDATE {table_name}
+                SET SHUFFLED_ID = (SELECT num FROM shuffled WHERE shuffled.ROWID = {table_name}.ROWID);"""
+    cursor.execute(query)
 
+# Splits the function pairs into training, validation, and testing sets using randomised ROWID
 def splitFunctionPairsSHUFFLEDID(conn, src_table_name, table_size, split = (0.7, 0.1, 0.2)):
     print(f"Splitting {src_table_name} into TEST, TRAIN, and VAL")
 
@@ -196,7 +144,7 @@ def splitFunctionPairsSHUFFLEDID(conn, src_table_name, table_size, split = (0.7,
 
     return True
 
-
+# Copies the necessary Functions rows into the DBName database
 def copyFunctionDetails(conn, DBName):
     print(f"Copying function details into {DBName}")
 
@@ -213,6 +161,7 @@ ON f.BenchmarkID = fp.BenchmarkID AND f.FunctionID = fp.FunctionID"""
 
     return True
 
+# Copies the necessary Benchmarks rows into the DBName database
 def copyBenchmarkDetails(conn, DBName):
     print(f"Copying benchmark details into {DBName}")
 
@@ -227,6 +176,7 @@ def copyBenchmarkDetails(conn, DBName):
 
     return True
 
+# Generates a temporary directory to store the new databases
 def generateTempDirectory(basedir):
     print(f"Creating temporary directory")
     # Generate the temporary directory
@@ -246,7 +196,7 @@ def generateTempDirectory(basedir):
 
     return temp_dir
 
-# Print the schema of the database
+# Print the schema of the database, including any attached or temporary databases
 def print_schema(conn):
     cursor = conn.cursor()
 
@@ -275,85 +225,16 @@ def print_schema(conn):
                 if statement[0]:  # Ensure the statement is not None
                     print(statement[0] + ';')
 
+# Get the size of a table
 def getSizeOfTable(conn, table_name):
     cursor = conn.cursor()
     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
     result = cursor.fetchone()
     return result[0]
 
-# Print
-
 # Split the database into training, validation, and testing sets
 def SplitDB(DB_FILE, split = (0.7, 0.1, 0.2)):
-    # # Connect to source database
-    # print(f"Connecting to database")
-    # dirname = os.path.dirname(DB_FILE)
-    # conn = connectDB(DB_FILE)
-
-    # # Generate temporary tables for each alignment score
-    # print(f"Generating Temporary AlignmentScore Tables")
-    # generateTempTable(conn, 0)
-    # generateTempTable(conn, 1)
-    # generateTempTable(conn, -1)
-
-    # # Print the table size
-    # print(f"FunctionPairs_0: {getSizeOfTable(conn, 'temp.FunctionPairs_0')}")
-    # print(f"FunctionPairs_1: {getSizeOfTable(conn, 'temp.FunctionPairs_1')}")
-    # print(f"FunctionPairs_NonZero: {getSizeOfTable(conn, 'temp.FunctionPairs_NonZero')}")
-
-    # # Create a temporary directory to store the databases
-    # temp_dir = generateTempDirectory(dirname)
-
-    # # Attach the train, validation and test databases
-    # print(f"Attaching databases")
-    # attachDatabase(conn, os.path.join(temp_dir, 'train.db'), 'TRAIN')
-    # attachDatabase(conn, os.path.join(temp_dir, 'validation.db'), 'VAL')
-    # attachDatabase(conn, os.path.join(temp_dir, 'test.db'), 'TEST')
-
-    # # Create tables for each database
-    # print(f"Initialising tables")
-    # initialiseTable(conn, 'TRAIN')
-    # initialiseTable(conn, 'VAL')
-    # initialiseTable(conn, 'TEST')
-
-    # # Insert the random numbers for each table
-    # temp_tables = ['temp.FunctionPairs_0', 'temp.FunctionPairs_1', 'temp.FunctionPairs_NonZero']
-    # for table in temp_tables:
-    #     insertRandomColumn(conn, table)
-
-    # # Print temporary table size
-    # print(f"FunctionPairs_0: {getSizeOfTable(conn, 'temp.FunctionPairs_0')}")
-    # print(f"FunctionPairs_1: {getSizeOfTable(conn, 'temp.FunctionPairs_1')}")
-    # print(f"FunctionPairs_NonZero: {getSizeOfTable(conn, 'temp.FunctionPairs_NonZero')}")
-
-    # # Split the data into training, validation, and testing sets
-    # for table in temp_tables:
-    #     splitFunctionPairs(conn, table, split)
-
-    # # Print the size of the training, validation, and testing sets
-    # print(f"TRAIN: {getSizeOfTable(conn, 'TRAIN.FunctionPairs')}")
-    # print(f"VAL: {getSizeOfTable(conn, 'VAL.FunctionPairs')}")
-    # print(f"TEST: {getSizeOfTable(conn, 'TEST.FunctionPairs')}")
-
-    # # Insert the Functions Details
-    # copyFunctionDetails(conn, 'TRAIN')
-    # copyFunctionDetails(conn, 'VAL')
-    # copyFunctionDetails(conn, 'TEST')
-
-    # # Insert the benchmark Details
-    # copyBenchmarkDetails(conn, 'TRAIN')
-    # copyBenchmarkDetails(conn, 'VAL')
-    # copyBenchmarkDetails(conn, 'TEST')
-
-    # # Detach the databases
-    # detachDatabase(conn, 'TRAIN')
-    # detachDatabase(conn, 'VAL')
-    # detachDatabase(conn, 'TEST')
-
-    # # Close the connection
-    # conn.close()
-
-        # Connect to source database
+    # Connect to source database
     print(f"Connecting to database")
     dirname = os.path.dirname(DB_FILE)
     conn = connectDB(DB_FILE)
@@ -414,14 +295,13 @@ def SplitDB(DB_FILE, split = (0.7, 0.1, 0.2)):
     copyBenchmarkDetails(conn, 'VAL')
     copyBenchmarkDetails(conn, 'TEST')
 
-    # Detach the databases
+    # Detach the train, validation and test databases
     detachDatabase(conn, 'TRAIN')
     detachDatabase(conn, 'VAL')
     detachDatabase(conn, 'TEST')
 
     # Close the connection
     conn.close()
-
 
 if __name__ == "__main__":
     import argparse

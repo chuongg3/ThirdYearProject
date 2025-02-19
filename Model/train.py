@@ -83,8 +83,19 @@ def DumpModel(model, path, library, history = None):
             pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         raise NotImplementedError(f"Dumping for {library} is not implemented yet")
-    
 
+def getTestNonZeroData(DB_FILE, batch_size = 32, sqlite_batch = 1000):
+    condition = "WHERE AlignmentScore != 0"
+
+    dataset = LoadData.LoadDataset(DB_FILE, batch_size, sqlite_batch, condition=condition)
+    return dataset
+
+# Evaluate the model given the dataset
+def EvaluateModel(model, dataset):
+    print(f"===== Evaluating the model =====")
+    evaluate = model.evaluate(dataset)
+
+    return evaluate
 
 # Main Function
 if __name__ == "__main__":
@@ -117,8 +128,19 @@ if __name__ == "__main__":
         
         # Dump the model and the history
         DumpModel(model, PATH, library, history.history)
+
+        # Test the Model
+        print("===== ALL TEST DATA =====")
+        data = EvaluateModel(model, test_set)
+        print(f"Test Loss: {data[0]}")
+        print(f"Test MSE: {data[1]}")
+
+        print("===== NON-ZERO TEST DATA =====")
+        paths = LoadData.getTempDirectories(args.data)
+        non_zero_data = getTestNonZeroData(paths[2], args.batch_size)
+        non_zero_data = EvaluateModel(model, non_zero_data)
+        print(f"Test Loss: {non_zero_data[0]}")
+        print(f"Test MSE: {non_zero_data[1]}")
+
     else:
         raise NotImplementedError("Training for pytorch is not implemented yet")
-
-
-

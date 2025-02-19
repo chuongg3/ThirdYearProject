@@ -86,7 +86,7 @@ def getTempDirectories(DB_FILE):
     return train_path, val_path, test_path
 
 # Tensorflow dataset which loads only the necessary data
-def TensorflowTrainingDataset(DB_FILE, batch_size = 1000, dataset = "Training"):
+def TensorflowTrainingDataset(DB_FILE, batch_size = 1000, dataset = "Training", condition = ""):
     query = f"""SELECT F1.Encoding AS Encoding1, F2.Encoding AS Encoding2, FunctionPairs.AlignmentScore
 FROM FunctionPairs
 JOIN Functions F1 ON
@@ -94,7 +94,7 @@ FunctionPairs.BenchmarkID = F1.BenchmarkID AND
 FunctionPairs.Function1ID = F1.FunctionID
 JOIN Functions F2 ON
 FunctionPairs.BenchmarkID = F2.BenchmarkID AND
-FunctionPairs.Function2ID = F2.FunctionID"""
+FunctionPairs.Function2ID = F2.FunctionID {condition}"""
 
     with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
         cursor = conn.cursor()
@@ -121,6 +121,21 @@ FunctionPairs.Function2ID = F2.FunctionID"""
                 # Outputs the results
                 yield (encoding1, encoding2), AlignmentScore, weight
         print(f"Size of dataset ({dataset}): {count}")
+
+# Loads a dataset given the condition
+def LoadDataset(DB_FILE, batch_size = 32, sqlite_batch = 1000, condition = ""):
+    dataset = tf.data.Dataset.from_generator(
+        lambda: TensorflowTrainingDataset(DB_FILE, sqlite_batch, condition, condition),
+        output_signature=(
+            (tf.TensorSpec(shape=(300,), dtype=tf.float32),
+             tf.TensorSpec(shape=(300,), dtype=tf.float32)),
+            tf.TensorSpec(shape=(), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.float32)
+        )
+    )
+
+    dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return dataset
 
 # Create a tensorflow databset
 def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000, overwrite = False):

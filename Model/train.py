@@ -20,19 +20,12 @@ def parse_args():
 
 # Load data using tensorflow dataset
 def LoadDataTensorflow(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
-    print(f"Loading data from {DB_FILE} into tensorflow dataset")
+    print(f"===== Loading {DB_FILE} into Tensorflow Dataset =====")
 
     # Load the dataset
-    train_zero, val_zero, test_zero = LoadData.CreateEncodingDataset(DB_FILE, 0, batch_size, split_size, sqlite_batch)
-    train_one, val_one, test_one = LoadData.CreateEncodingDataset(DB_FILE, 1, batch_size, split_size, sqlite_batch)
-    train_non_zero, val_non_zero, test_non_zero = LoadData.CreateEncodingDataset(DB_FILE, -1, batch_size, split_size, sqlite_batch)
+    train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DB_FILE, batch_size, split_size, sqlite_batch)
 
-    # Join the datasets
-    train_set = train_zero.concatenate(train_one).concatenate(train_non_zero)
-    val_set = val_zero.concatenate(val_one).concatenate(val_non_zero)
-    test_set = test_zero.concatenate(test_one).concatenate(test_non_zero)
-
-    print(f"Finished loading data into tensorflow dataset")
+    print(f"===== Finished Tensorflow Dataset =====")
     return train_set, val_set, test_set
 
 # TODO: Load data using pytorch dataset
@@ -100,6 +93,7 @@ if __name__ == "__main__":
     # ===== Loading the Model and Data =====
     Models = ['SiameseModel']   # Update this list with new models
     MODEL = args.model
+    print(f"Attempting to load {MODEL}")
     if args.model == "SiameseModel":
         library = 'tensorflow'
         train_set, val_set, test_set = LoadDataTensorflow(args.data, args.batch_size)
@@ -110,6 +104,7 @@ if __name__ == "__main__":
 
     # ===== Verify Path Validity =====
     PATH = CheckPath(args.output, library, MODEL)
+    print(f"Checking path validity for {PATH}")
     if not PATH:
         print(f"ERROR: {PATH} is not a valid path")
         exit(1)

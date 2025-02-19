@@ -166,7 +166,7 @@ def copyBenchmarkDetails(conn, DBName):
     print(f"Copying benchmark details into {DBName}")
 
     benchmark_query = f"""INSERT INTO {DBName}.Benchmarks(ROWID, BenchmarkName) 
-    SELECT ROWID, BenchmarkName FROM Benchmarks b
+    SELECT b.ROWID, BenchmarkName FROM Benchmarks b
     JOIN (SELECT DISTINCT(BenchmarkID) FROM {DBName}.FunctionPairs) AS fp
      ON b.ROWID = fp.BenchmarkID"""
     

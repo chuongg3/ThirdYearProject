@@ -7,6 +7,8 @@ import torch
 import numpy as np
 import tensorflow as tf
 
+""" ===== GENERAL FUNCTIONS ===== """
+
 def connectToDB(DBLoc):
     if not os.path.exists(DBLoc):
         print(f"ERROR: {DBLoc} does not exist")
@@ -42,33 +44,15 @@ FunctionPairs.Function2ID = F2.FunctionID;"""
     df = pd.read_sql_query(query, conn)
     return df
 
-# Custom dataset for encoding dataset
-# Columns in the dataset
-#    - Encoding 1: Python list of float
-#    - Encoding 2: Python list of float
-#    - Alignment Score: A float between 0 and 1 includive
-def EncodingDataset(Dataset):
-    def __init__(self, df):
-        self.df = df
-
-    def __len__(self):
-        return self.df.shape[0]
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        Encoding1 = torch.tensor(row.iloc[0], dtype=torch.float32)
-        Encoding2 = torch.tensor(row.iloc[1], dtype=torch.float32)
-        AlignmentScore = row.iloc[2]
-        return ((Encoding1, Encoding2), AlignmentScore)
-
 def LoadAlignmentScore(conn):
     query = f"SELECT AlignmentScore FROM FunctionPairs"
 
     AlignmentScore = pd.read_sql_query(query, conn)
     return AlignmentScore
 
-def getDatasetSize(DB_File, condition):
-    query = f"""SELECT COUNT(ROWID) FROM FunctionPairs WHERE {condition}"""
+# Gets the size of the FunctionPairs table
+def getDatasetSize(DB_File, condition = ""):
+    query = f"""SELECT COUNT(ROWID) FROM FunctionPairs {condition}"""
     with sqlite3.connect(DB_File, check_same_thread=False) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -85,8 +69,10 @@ def getTempDirectories(DB_FILE):
 
     return train_path, val_path, test_path
 
+""" ===== Tensorflow Related Datasets ===== """
+
 # Tensorflow dataset which loads only the necessary data
-def TensorflowTrainingDataset(DB_FILE, batch_size = 1000, dataset = "Training", condition = ""):
+def TensorflowTrainingDataset(DB_FILE, batch_size = 1000, dataset = "Training", condition = "", zero_weight = (1/10000)):
     query = f"""SELECT F1.Encoding AS Encoding1, F2.Encoding AS Encoding2, FunctionPairs.AlignmentScore
 FROM FunctionPairs
 JOIN Functions F1 ON
@@ -99,9 +85,11 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
     with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
-        print(f"Start of {dataset} dataset")
+
         count = 0
-        debugLoop = 10000
+        debugLoop = 500000
+        non_zero_weight = 1 - zero_weight
+        print(f"Start of {dataset} dataset")
         while True:
             rows = cursor.fetchmany(batch_size)
             if not rows:
@@ -111,7 +99,7 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
                 encoding1 = np.array(pickle.loads(row[0]), dtype=np.float32)
                 encoding2 = np.array(pickle.loads(row[1]), dtype=np.float32)
                 AlignmentScore = float(row[2])
-                weight = (1/1000) if AlignmentScore == 0 else (999/1000)
+                weight = zero_weight if AlignmentScore == 0 else 1-non_zero_weight
 
                 # Keeps track of the number of rows
                 count += 1
@@ -123,7 +111,7 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
         print(f"Size of dataset ({dataset}): {count}")
 
 # Loads a dataset given the condition
-def LoadDataset(DB_FILE, batch_size = 32, sqlite_batch = 1000, condition = ""):
+def LoadDataset(DB_FILE, sqlite_batch = 1000, condition = ""):
     dataset = tf.data.Dataset.from_generator(
         lambda: TensorflowTrainingDataset(DB_FILE, sqlite_batch, condition, condition),
         output_signature=(
@@ -134,11 +122,12 @@ def LoadDataset(DB_FILE, batch_size = 32, sqlite_batch = 1000, condition = ""):
         )
     )
 
-    dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
 # Create a tensorflow databset
-def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000, overwrite = False):
+def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000, overwrite = False, zero_weight = None):
+    print(f"===== Loading {DB_FILE} into Tensorflow Dataset =====")
     from SplitDB import SplitDB
 
     # Get the temporary file directory
@@ -160,9 +149,19 @@ def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.
     if not data_exists or overwrite:
         SplitDB(DB_FILE, split_size)
 
+    # Calculate the sample weight of data with zero alignment score
+    if zero_weight is None:
+        non_zero_count = getDatasetSize(train_path, condition="WHERE AlignmentScore != 0")
+        total_count = getDatasetSize(train_path)
+        if total_count == 0:
+            zero_weight = (1/10000)
+        else:
+            zero_weight = non_zero_count / total_count
+    print(f"Calculated Zero Weight: {zero_weight}")
+
     # Load the data into datasets
     train_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(train_path, sqlite_batch, "Training"),
+        lambda: TensorflowTrainingDataset(train_path, sqlite_batch, "Training", zero_weight=zero_weight),
         output_signature=(
             (tf.TensorSpec(shape=(300,), dtype=tf.float32),
              tf.TensorSpec(shape=(300,), dtype=tf.float32)),
@@ -172,7 +171,7 @@ def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.
     )
 
     val_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(val_path, sqlite_batch, "Validation"),
+        lambda: TensorflowTrainingDataset(val_path, sqlite_batch, "Validation", zero_weight=zero_weight),
         output_signature=(
             (tf.TensorSpec(shape=(300,), dtype=tf.float32),
              tf.TensorSpec(shape=(300,), dtype=tf.float32)),
@@ -182,7 +181,7 @@ def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.
     )
 
     test_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(test_path, sqlite_batch, "Testing"),
+        lambda: TensorflowTrainingDataset(test_path, sqlite_batch, "Testing", zero_weight=zero_weight),
         output_signature=(
             (tf.TensorSpec(shape=(300,), dtype=tf.float32),
              tf.TensorSpec(shape=(300,), dtype=tf.float32)),
@@ -191,8 +190,34 @@ def CreateTensorflowDataset(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.
         )
     )
 
-    train_set = train_set.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    val_set = val_set.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    test_set = test_set.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    train_set = train_set.prefetch(tf.data.AUTOTUNE)
+    val_set = val_set.prefetch(tf.data.AUTOTUNE)
+    test_set = test_set.prefetch(tf.data.AUTOTUNE)
 
+    print(f"===== Finished Tensorflow Dataset =====")
     return train_set, val_set, test_set
+
+
+""" ===== PyTorch Related Datasets ===== """
+
+
+"""
+Custom PyTorch dataset for encoding dataset
+Columns in the dataset
+   - Encoding 1: Python list of float
+   - Encoding 2: Python list of float
+   - Alignment Score: A float between 0 and 1 inclusive
+"""
+def EncodingDataset(Dataset):
+    def __init__(self, df):
+        self.df = df
+
+    def __len__(self):
+        return self.df.shape[0]
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        Encoding1 = torch.tensor(row.iloc[0], dtype=torch.float32)
+        Encoding2 = torch.tensor(row.iloc[1], dtype=torch.float32)
+        AlignmentScore = row.iloc[2]
+        return ((Encoding1, Encoding2), AlignmentScore)

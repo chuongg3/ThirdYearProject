@@ -1,35 +1,9 @@
 '''FUNCTIONS THAT ARE USED TO TRAIN THE MODEL'''
 
-import argparse
-import LoadData
 import os
-import tensorflow as tf
-from datetime import datetime
 import pickle
-import optuna
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train a model")
-    parser.add_argument('--epochs', type=int, default=10, help='Number of epochs to train')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for training')
-    parser.add_argument('--model', '-m', type=str, default="SiameseModel", help='Model name')
-    parser.add_argument('--data', '-d', type=str, default="./data/benchmark.db", help='Path to the data file')
-    parser.add_argument('--output', '-o', type=str, default="./log/", help='Output directory for logs and models')
-    parser.add_argument('--overwrite', '-w', action='store_true', help='Overwrite the existing data')
-    parser.add_argument('--metrics', '-m', type=str, default='mse', help='Metrics to use for training')
-    # TODO: Logging location and model saving location
-    return parser.parse_args()
-
-# Load data using tensorflow dataset
-def LoadDataTensorflow(DB_FILE, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000, overwrite = False):
-    print(f"===== Loading {DB_FILE} into Tensorflow Dataset =====")
-
-    # Load the dataset
-    train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DB_FILE, batch_size, split_size, sqlite_batch, overwrite)
-
-    print(f"===== Finished Tensorflow Dataset =====")
-    return train_set, val_set, test_set
+import LoadData
+from datetime import datetime
 
 # TODO: Load data using pytorch dataset
 def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
@@ -39,10 +13,12 @@ def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqli
 
 
 # Trains the model using tensorflow
-def TrainTensorflowModel(model, train_set, val_set, epochs, learning_rate):
+def TrainTensorflowModel(model, train_set, val_set, epochs = 10, batch_size = 32):
     print(f"Training the model using tensorflow")
-    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss='binary_crossentropy', metrics=['accuracy'])
 
+    # Create optimizer
+    train_set = train_set.batch(batch_size)
+    val_set = val_set.batch(batch_size)
     history = model.fit(train_set, epochs=epochs, validation_data=val_set)
 
     print(f"Finished training the model using tensorflow")
@@ -87,18 +63,53 @@ def DumpModel(model, path, library, history = None):
     else:
         raise NotImplementedError(f"Dumping for {library} is not implemented yet")
 
-def getTestNonZeroData(DB_FILE, batch_size = 32, sqlite_batch = 1000):
+# Dumps the histories into the same directory as where the model is being saved
+# Used by HyperParameterTraining
+def DumpHistory(histories, modelPath):
+    # Save the history
+    dir = os.path.dirname(modelPath)
+    file = os.path.basename(modelPath).split('.keras')[0]
+    filename = os.path.join(dir, f"{file}.history")
+    print(f"Saving the history to {filename}")
+
+    with open(filename, 'wb') as handle:
+        pickle.dump(histories, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+# Loads data with Non-Zero AlignmentScore from specified benchmark
+def getTestNonZeroData(DB_FILE, sqlite_batch = 1000):
     condition = "WHERE AlignmentScore != 0"
 
-    dataset = LoadData.LoadDataset(DB_FILE, batch_size, sqlite_batch, condition=condition)
+    dataset = LoadData.LoadDataset(DB_FILE, sqlite_batch, condition=condition)
     return dataset
 
 # Evaluate the model given the dataset
-def EvaluateModel(model, dataset):
-    print(f"===== Evaluating the model =====")
-    evaluate = model.evaluate(dataset)
+# Evaluates using all data and non-zero data
+def EvaluateModel(model, dataPath, metrics, batch_size = 32):
+    print(f"===== Evaluating Model's Performance =====")
 
-    return evaluate
+    # Get path to test dataset
+    paths = LoadData.getTempDirectories(dataPath)
 
+    # Evaluate Model on All Data
+    print("===== ALL TEST DATA =====")
+    all_data = LoadData.LoadDataset(paths[2])
+    all_eval = model.evaluate(all_data.batch(batch_size))
+    print(f"Test Loss: {all_eval[0]}")
+    for idx, metric in enumerate(metrics):
+        print(f"Test {metric}: {all_eval[idx + 1]}")
 
+    # Evaluate Model on Non-Zero Data
+    print("===== NON-ZERO TEST DATA =====")
+    non_zero_data = getTestNonZeroData(paths[2])
+    non_zero_eval = model.evaluate(non_zero_data.batch(batch_size))
+    print(f"Test Loss: {non_zero_eval[0]}")
+    for idx, metric in enumerate(metrics):
+        print(f"Test {metric}: {non_zero_eval[idx + 1]}")
+
+    return all_eval, non_zero_eval
+
+# Splits a string by comma and stripping them
+# Used for splitting metrics parameter
+def SplitString(input):
+    return [x.strip() for x in input.split(',')]
 

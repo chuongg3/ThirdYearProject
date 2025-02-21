@@ -306,7 +306,7 @@ def SplitDB(DB_FILE, split = (0.7, 0.1, 0.2)):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Split the database into training, validation, and testing sets")
-    parser.add_argument("--DB_FILE", type=str, default="./data/benchmark-cp.db", help="The database file to split")
+    parser.add_argument("--DB_FILE", '-d', type=str, required=True, help="The database file to split")
     # parser.add_argument("-s", "--split", type=float, nargs=3, default=(0.7, 0.1, 0.2), help="The split ratio for training, validation, and testing sets")
     args = parser.parse_args()
 

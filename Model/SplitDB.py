@@ -115,8 +115,7 @@ def insertShuffledROWIDColumn(conn, table_name):
     # Update the shuffled ROWID
     print("Updating the table with shuffled ROWID")
     query = f"""WITH shuffled AS (
-                SELECT ROWID, 
-                ROW_NUMBER() OVER () AS num
+                SELECT ROWID, ROW_NUMBER() OVER () AS num
                 FROM (SELECT ROWID FROM {table_name} ORDER BY RANDOM()))
                 UPDATE {table_name}
                 SET SHUFFLED_ID = (SELECT num FROM shuffled WHERE shuffled.ROWID = {table_name}.ROWID);"""
@@ -128,17 +127,97 @@ def splitFunctionPairsSHUFFLEDID(conn, src_table_name, table_size, split = (0.7,
 
     threshold1 = split[0] * table_size
     threshold2 = split[1] * table_size + threshold1
+    threshold3 = table_size
 
     columns = f"BenchmarkID, Function1ID, Function2ID, Technique, AlignmentScore, FrequencyDistance, MinHashDistance, MergeSuccessful, MergedEstimatedSize, MergedLLVMIR, MergedEncoding"
-    
 
     train_query = f"INSERT INTO TRAIN.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE SHUFFLED_ID < {threshold1}"
     validation_query = f"INSERT INTO VAL.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE SHUFFLED_ID >= {threshold1} AND SHUFFLED_ID < {threshold2}"
-    test_query = f"INSERT INTO TEST.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE SHUFFLED_ID >= {threshold2}"
+    test_query = f"INSERT INTO TEST.FunctionPairs SELECT {columns} FROM {src_table_name} WHERE SHUFFLED_ID >= {threshold2} AND SHUFFLED_ID <= {threshold3}"
 
     cursor = conn.cursor()
     cursor.execute(train_query)
     cursor.execute(validation_query)
+    cursor.execute(test_query)
+    conn.commit()
+
+    return True
+
+def insertRandomColumn(conn, table_name):
+    # Add a column to store the shuffled ROWID
+    print(f"Adding RANDOM_ID column to {table_name}")
+    cursor = conn.cursor()
+    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN RANDOM_ID REAL")
+
+    # Update the shuffled ROWID
+    print(f"Updating the {table_name} with RANDOM numbers")
+    query = f"""UPDATE {table_name}
+                SET RANDOM_ID = RANDOM();"""
+    cursor.execute(query)
+
+# Splits the function pairs into training, validation, and testing sets using randomised ROWID
+def SplitFunctionPairs(conn, table_size, src_table = ['temp.FunctionPairs_0', 'temp.FunctionPairs_1', 'temp.FunctionPairs_NonZero'], split = (0.7, 0.1, 0.2)):
+    print(f"Splitting Temporary Tables into TEST, TRAIN, and VAL")
+
+    print("Calculating thresholds")
+    # Calculating the thresholds for 0 alignment score
+    threshold1_0 = int(split[0] * table_size[0])
+    threshold2_0 = int(split[1] * table_size[0]) + threshold1_0
+    threshold3_0 = table_size[0]
+
+    # Calculating the thresholds for 1 alignment score
+    threshold1_1 = int(split[0] * table_size[1])
+    threshold2_1 = int(split[1] * table_size[1]) + threshold1_1
+    threshold3_1 = table_size[1]
+
+    # Calculating the thresholds for non-zero alignment score
+    threshold1_NonZero = int(split[0] * table_size[2])
+    threshold2_NonZero = int(split[1] * table_size[2]) + threshold1_NonZero
+    threshold3_NonZero = table_size[2]
+
+    cursor = conn.cursor()
+    columns = f"BenchmarkID, Function1ID, Function2ID, Technique, AlignmentScore, FrequencyDistance, MinHashDistance, MergeSuccessful, MergedEstimatedSize, MergedLLVMIR, MergedEncoding"
+
+    # Splitting into Training Set
+    print("Splitting into Training Set")
+    train_query = f"""
+    WITH traindata as (
+    SELECT {columns}, RANDOM_ID FROM {src_table[0]} WHERE SHUFFLED_ID < {threshold1_0}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[1]} WHERE SHUFFLED_ID < {threshold1_1}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[2]} WHERE SHUFFLED_ID < {threshold1_NonZero}
+    )
+    INSERT INTO TRAIN.FunctionPairs SELECT {columns} FROM traindata ORDER BY RANDOM_ID"""
+
+    cursor.execute(train_query)
+    conn.commit()
+
+    # Splitting into Validation Set
+    print("Splitting into Validation Set")
+    validation_query = f"""
+    WITH valdata as (
+    SELECT {columns}, RANDOM_ID FROM {src_table[0]} WHERE SHUFFLED_ID >= {threshold1_0} AND SHUFFLED_ID < {threshold2_0}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[1]} WHERE SHUFFLED_ID >= {threshold1_1} AND SHUFFLED_ID < {threshold2_1}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[2]} WHERE SHUFFLED_ID >= {threshold1_NonZero} AND SHUFFLED_ID < {threshold2_NonZero}
+    )
+    INSERT INTO VAL.FunctionPairs SELECT {columns} FROM valdata ORDER BY RANDOM_ID"""
+    cursor.execute(validation_query)
+    conn.commit()
+
+    # Splitting into Testing Set
+    print("Splitting into Testing Set")
+    test_query = f"""
+    WITH testdata as (
+    SELECT {columns}, RANDOM_ID FROM {src_table[0]} WHERE SHUFFLED_ID >= {threshold2_0} AND SHUFFLED_ID <= {threshold3_0}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[1]} WHERE SHUFFLED_ID >= {threshold2_1} AND SHUFFLED_ID <= {threshold3_1}
+    UNION
+    SELECT {columns}, RANDOM_ID FROM {src_table[2]} WHERE SHUFFLED_ID >= {threshold2_NonZero} AND SHUFFLED_ID <= {threshold3_NonZero}
+    )
+    INSERT INTO TEST.FunctionPairs SELECT {columns} FROM testdata ORDER BY RANDOM_ID"""
     cursor.execute(test_query)
     conn.commit()
 
@@ -267,18 +346,20 @@ def SplitDB(DB_FILE, split = (0.7, 0.1, 0.2)):
 
     # Insert the random numbers for each table
     temp_tables = ['temp.FunctionPairs_0', 'temp.FunctionPairs_1', 'temp.FunctionPairs_NonZero']
-    for table in temp_tables:
+    alignment_size = [0, 0, 0]
+    for idx, table in enumerate(temp_tables):
         insertShuffledROWIDColumn(conn, table)
+        insertRandomColumn(conn, table)
+        alignment_size[idx] = getSizeOfTable(conn, table)
 
     # Print temporary table size
-    print(f"FunctionPairs_0: {getSizeOfTable(conn, 'temp.FunctionPairs_0')}")
-    print(f"FunctionPairs_1: {getSizeOfTable(conn, 'temp.FunctionPairs_1')}")
-    print(f"FunctionPairs_NonZero: {getSizeOfTable(conn, 'temp.FunctionPairs_NonZero')}")
+    print(f"FunctionPairs_0: {alignment_size[0]}")
+    print(f"FunctionPairs_1: {alignment_size[1]}")
+    print(f"FunctionPairs_NonZero: {alignment_size[2]}")
 
     # Split the data into training, validation, and testing sets
-    for table in temp_tables:
-        table_size = getSizeOfTable(conn, table)
-        splitFunctionPairsSHUFFLEDID(conn, table, table_size, split)
+    table_size = [alignment_size[1]+alignment_size[2], alignment_size[1], alignment_size[2]]
+    SplitFunctionPairs(conn, table_size, temp_tables, split)
 
     # Print the size of the training, validation, and testing sets
     print(f"TRAIN: {getSizeOfTable(conn, 'TRAIN.FunctionPairs')}")

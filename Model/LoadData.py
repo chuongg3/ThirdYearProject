@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import numpy as np
 import tensorflow as tf
+import time
 
 """ ===== GENERAL FUNCTIONS ===== """
 
@@ -69,6 +70,24 @@ def getTempDirectories(DB_FILE):
 
     return train_path, val_path, test_path
 
+# Convert a serialised python list into an NDArray
+def decodeNP(element):
+    element = pickle.loads(element)
+    return np.array(element, dtype=np.float32)
+
+# Convert Row to Three ND Arrays for each column
+def convertRowToNDArray(row):
+    columns = list(zip(*row))
+    x1 = list(map(decodeNP, columns[0]))
+    x2 = list(map(decodeNP, columns[1]))
+    y = np.array(columns[2], dtype=np.float32)
+
+    # Turn the list of arrays into NP Arrays
+    x1 = np.vstack(x1)
+    x2 = np.vstack(x2)
+
+    return x1, x2, y
+
 """ ===== Tensorflow Related Datasets ===== """
 
 # Tensorflow dataset which loads only the necessary data
@@ -81,6 +100,10 @@ FunctionPairs.Function1ID = F1.FunctionID
 JOIN Functions F2 ON
 FunctionPairs.BenchmarkID = F2.BenchmarkID AND
 FunctionPairs.Function2ID = F2.FunctionID {condition}"""
+    # Prints time taken to load dataset
+    if not __debug__:
+        totalTime = 0
+        starttime = time.time()
 
     with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
         cursor = conn.cursor()
@@ -88,37 +111,32 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
 
         count = 0
         debugLoop = 500000
-        non_zero_weight = 1 - zero_weight
+
         print(f"Start of {dataset} dataset")
         while True:
+            # Fetch the rows
             rows = cursor.fetchmany(batch_size)
             if not rows:
                 break
-            for row in rows:
-                # Pickle the data where needed
-                encoding1 = np.array(pickle.loads(row[0]), dtype=np.float32)
-                encoding2 = np.array(pickle.loads(row[1]), dtype=np.float32)
-                AlignmentScore = float(row[2])
-                weight = zero_weight if AlignmentScore == 0 else 1-non_zero_weight
 
-                # Keeps track of the number of rows
-                count += 1
-                if (count % debugLoop == 0):
-                    print(f"Dataset Index ({dataset}): {count}")
+            # Convert the rows into numpy arrays
+            x1, x2, y = convertRowToNDArray(rows)
+            yield (x1, x2), y
+            count += len(rows)
 
-                # Outputs the results
-                yield (encoding1, encoding2), AlignmentScore, weight
-        print(f"Size of dataset ({dataset}): {count}")
+        if not __debug__:
+            totalTime = time.time() - starttime
+            print(f"Total time taken to load {count} so far: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
+        print(f"\nSize of dataset ({dataset}): {count}")
 
 # Loads a dataset given the condition
 def LoadDataset(DB_FILE, sqlite_batch = 1000, condition = ""):
     dataset = tf.data.Dataset.from_generator(
         lambda: TensorflowTrainingDataset(DB_FILE, sqlite_batch, condition, condition),
         output_signature=(
-            (tf.TensorSpec(shape=(300,), dtype=tf.float32),
-             tf.TensorSpec(shape=(300,), dtype=tf.float32)),
-            tf.TensorSpec(shape=(), dtype=tf.float32),
-            tf.TensorSpec(shape=(), dtype=tf.float32)
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
         )
     )
 
@@ -126,7 +144,7 @@ def LoadDataset(DB_FILE, sqlite_batch = 1000, condition = ""):
     return dataset
 
 # Create a tensorflow databset
-def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000, overwrite = False, zero_weight = None):
+def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 1000, overwrite = False, zero_weight = None):
     print(f"===== Loading {DB_FILE} into Tensorflow Dataset =====")
     from SplitDB import SplitDB
 
@@ -149,44 +167,41 @@ def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), sqlite_batch 
     if not data_exists or overwrite:
         SplitDB(DB_FILE, split_size)
 
-    # Calculate the sample weight of data with zero alignment score
-    if zero_weight is None:
-        non_zero_count = getDatasetSize(train_path, condition="WHERE AlignmentScore != 0")
-        total_count = getDatasetSize(train_path)
-        if total_count == 0:
-            zero_weight = (1/10000)
-        else:
-            zero_weight = non_zero_count / total_count
-    print(f"Calculated Zero Weight: {zero_weight}")
+    # # Calculate the sample weight of data with zero alignment score
+    # if zero_weight is None:
+    #     non_zero_count = getDatasetSize(train_path, condition="WHERE AlignmentScore != 0")
+    #     total_count = getDatasetSize(train_path)
+    #     if total_count == 0:
+    #         zero_weight = (1/10000)
+    #     else:
+    #         zero_weight = non_zero_count / total_count
+    # print(f"Calculated Zero Weight: {zero_weight}")
 
     # Load the data into datasets
     train_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(train_path, sqlite_batch, "Training", zero_weight=zero_weight),
+        lambda: TensorflowTrainingDataset(train_path, batch_size, "Training", zero_weight=zero_weight),
         output_signature=(
-            (tf.TensorSpec(shape=(300,), dtype=tf.float32),
-             tf.TensorSpec(shape=(300,), dtype=tf.float32)),
-            tf.TensorSpec(shape=(), dtype=tf.float32),
-            tf.TensorSpec(shape=(), dtype=tf.float32)
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
         )
     )
 
     val_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(val_path, sqlite_batch, "Validation", zero_weight=zero_weight),
+        lambda: TensorflowTrainingDataset(val_path, batch_size, "Validation", zero_weight=zero_weight),
         output_signature=(
-            (tf.TensorSpec(shape=(300,), dtype=tf.float32),
-             tf.TensorSpec(shape=(300,), dtype=tf.float32)),
-            tf.TensorSpec(shape=(), dtype=tf.float32),
-            tf.TensorSpec(shape=(), dtype=tf.float32)
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
         )
     )
 
     test_set = tf.data.Dataset.from_generator(
-        lambda: TensorflowTrainingDataset(test_path, sqlite_batch, "Testing", zero_weight=zero_weight),
+        lambda: TensorflowTrainingDataset(test_path, batch_size, "Testing", zero_weight=zero_weight),
         output_signature=(
-            (tf.TensorSpec(shape=(300,), dtype=tf.float32),
-             tf.TensorSpec(shape=(300,), dtype=tf.float32)),
-            tf.TensorSpec(shape=(), dtype=tf.float32),
-            tf.TensorSpec(shape=(), dtype=tf.float32)
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
         )
     )
 

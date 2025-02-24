@@ -46,13 +46,6 @@ if __name__ == "__main__":
         print(f"ERROR: {args.model} is not a valid model")
         exit(1)
 
-    # ===== Load The Data =====
-    if library == 'tensorflow':
-        # train_set, val_set, test_set = TrainFunctions.LoadDataTensorflow(DATAPATH, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT)
-        train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT)
-    else:
-        raise NotImplementedError(f"LoadData for {library} is not implemented yet")
-
     # ===== Verify Path Validity =====
     PATH = TrainFunctions.CheckPath(args.output, library, MODEL)
     print(f"Checking path validity for {PATH}")
@@ -60,16 +53,23 @@ if __name__ == "__main__":
         print(f"ERROR: {PATH} is not a valid path")
         exit(1)
 
-
+    # ===== Train HyperParameter =====
     if TRAINHYPERPARAMETER:
         # ===== Hyperparameter Optimization =====
         print(f"===== HYPERPARAMETER TRAINING =====")
-        bestparams, bestmodel = HyperParameterTraining(train_set, val_set, metrics=METRICS, n_trials=1, bestModelPath=PATH)
+        bestparams, bestmodel = HyperParameterTraining(DATAPATH, metrics=METRICS, n_trials=1, bestModelPath=PATH)
         print(f"Best Parameters: {bestparams}")
 
         # ===== Evaluate the Best Model =====
         TrainFunctions.EvaluateModel(bestmodel, DATAPATH, METRICS, BATCH_SIZE)
+    # ===== TRAIN MODEL =====
     else:
+        # ===== Load The Data =====
+        if library == 'tensorflow':
+            train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT)
+        else:
+            raise NotImplementedError(f"LoadData for {library} is not implemented yet")
+
         # ===== Train the Tensorflow Model =====
         print(f"Training for {args.epochs} epochs with batch size {args.batch_size} and learning rate {args.learning_rate}")
         if (library == 'tensorflow'):

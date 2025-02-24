@@ -17,8 +17,6 @@ def TrainTensorflowModel(model, train_set, val_set, epochs = 10, batch_size = 32
     print(f"Training the model using tensorflow")
 
     # Create optimizer
-    train_set = train_set.batch(batch_size)
-    val_set = val_set.batch(batch_size)
     history = model.fit(train_set, epochs=epochs, validation_data=val_set)
 
     print(f"Finished training the model using tensorflow")
@@ -82,7 +80,6 @@ def getTestNonZeroData(DB_FILE, sqlite_batch = 1000):
     dataset = LoadData.LoadDataset(DB_FILE, sqlite_batch, condition=condition)
     return dataset
 
-# Evaluate the model given the dataset
 # Evaluates using all data and non-zero data
 def EvaluateModel(model, dataPath, metrics, batch_size = 32):
     print(f"===== Evaluating Model's Performance =====")
@@ -93,7 +90,7 @@ def EvaluateModel(model, dataPath, metrics, batch_size = 32):
     # Evaluate Model on All Data
     print("===== ALL TEST DATA =====")
     all_data = LoadData.LoadDataset(paths[2])
-    all_eval = model.evaluate(all_data.batch(batch_size))
+    all_eval = model.evaluate(all_data)
     print(f"Test Loss: {all_eval[0]}")
     for idx, metric in enumerate(metrics):
         print(f"Test {metric}: {all_eval[idx + 1]}")
@@ -101,7 +98,7 @@ def EvaluateModel(model, dataPath, metrics, batch_size = 32):
     # Evaluate Model on Non-Zero Data
     print("===== NON-ZERO TEST DATA =====")
     non_zero_data = getTestNonZeroData(paths[2])
-    non_zero_eval = model.evaluate(non_zero_data.batch(batch_size))
+    non_zero_eval = model.evaluate(non_zero_data)
     print(f"Test Loss: {non_zero_eval[0]}")
     for idx, metric in enumerate(metrics):
         print(f"Test {metric}: {non_zero_eval[idx + 1]}")

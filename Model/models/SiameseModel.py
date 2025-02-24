@@ -1,12 +1,18 @@
-from tensorflow.keras.layers import Input, Dense, Lambda, Dropout, Layer
-from tensorflow.keras.models import Model
-import tensorflow.keras.backend as K
+import time
 import optuna
 import pickle
-import tensorflow as tf
-from TrainFunctions import DumpHistory
 
+import tensorflow as tf
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import Model
 from tensorflow.keras.saving import register_keras_serializable
+from tensorflow.keras.layers import Input, Dense, Dropout, Layer
+
+
+from TrainFunctions import DumpHistory
+from LoadData import CreateTensorflowDataset
+
+
 
 # Define the base network for feature extraction
 def create_base_network(input_shape, dropout = 0.25, units = [256, 128]):
@@ -43,8 +49,6 @@ def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, 
     embedding_a = base_network(input_a)
     embedding_b = base_network(input_b)
 
-    # distance = Lambda(l1_distance)([embedding_a, embedding_b])
-
     distance = L1Distance()([embedding_a, embedding_b])
 
     # Output layer for similarity score (0 to 1 range)
@@ -79,21 +83,20 @@ Best model will be saved to best_model.keras
 '''
 
 # Hyperparameter training
-def HyperParameterTraining(train_set, val_set, metrics = ['mse', 'mae', 'mape'], n_trials = 20, bestModelPath = "./BestModel.keras"):
-    bestModelScore = float("inf")
+def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 2, bestModelPath = "./BestModel.keras"):
     histories = []
+    bestModelScore = float("inf")
 
     # Define the objective function
     def objective(trial):
-        nonlocal bestModelScore
-        nonlocal train_set
-        nonlocal val_set
+        nonlocal DATA_PATH
         nonlocal histories
+        nonlocal bestModelScore
 
         # Get a range of values
-        epochs = trial.suggest_int('epochs', 2, 30)
+        epochs = trial.suggest_int('epochs', 2, 15)
         dropout = trial.suggest_float('dropout', 0.1, 0.5)
-        batch_size = trial.suggest_int('batch_size', 16, 128, step=16)
+        batch_size = trial.suggest_int('batch_size', 32, 128, step=16)
         learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2)
         # optimizer = trial.suggest_categorical('optimizer', ['adam', 'sgd', 'rmsprop'])
         optimizer = trial.suggest_categorical('optimizer', ['adam'])
@@ -105,11 +108,15 @@ def HyperParameterTraining(train_set, val_set, metrics = ['mse', 'mae', 'mape'],
         # Early Stopper to prevent overfitting
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
+        # Load the dataset
+        training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
+
         # Create the model
-        training_set = train_set.batch(batch_size)
-        validation_set = val_set.batch(batch_size)
         model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)
+        startTime = time.time()
         history = model.fit(training_set, epochs=epochs, validation_data=validation_set, callbacks=[early_stopping])
+        totalTime = time.time() - startTime
+        print(f"Time taken for the model to run: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
 
         # Get the validation loss
         val_loss = min(history.history['val_loss'])

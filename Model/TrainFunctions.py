@@ -4,6 +4,7 @@ import os
 import pickle
 import LoadData
 from datetime import datetime
+import time
 
 # TODO: Load data using pytorch dataset
 def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
@@ -16,8 +17,11 @@ def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqli
 def TrainTensorflowModel(model, train_set, val_set, epochs = 10, batch_size = 32):
     print(f"Training the model using tensorflow")
 
-    # Create optimizer
+    # Fit the model
+    startTime = time.time()
     history = model.fit(train_set, epochs=epochs, validation_data=val_set)
+    totalTime = time.time() - startTime
+    print(f"Time taken for the model to run: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
 
     print(f"Finished training the model using tensorflow")
     return model, history

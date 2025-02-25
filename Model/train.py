@@ -8,7 +8,6 @@ def parse_args():
     parser.add_argument('--hyperparameter', '-hp', action='store_true', help='Perform hyperparameter optimization')
     parser.add_argument('--model', '-m', type=str, default="SiameseModel", help='Model name')
     parser.add_argument('--data', '-d', type=str, default="./data/benchmark.db", help='Path to the data file')
-    parser.add_argument('--zero-weight', '-weight', type=float, help='Weight for zero alignment score')
     parser.add_argument('--overwrite', '-w', action='store_true', help='Overwrite the existing data')
     parser.add_argument('--epochs', '-e', type=int, default=10, help='Number of epochs to train')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training')
@@ -26,8 +25,6 @@ if __name__ == "__main__":
     TRAINHYPERPARAMETER = True if args.hyperparameter else False
     MODEL = args.model
     OVERWRITE = True if args.overwrite else False
-    ZERO_WEIGHT = args.zero_weight
-    print(f"Zero Weight from Input: {ZERO_WEIGHT}")
 
     # Model Related Parameters
     EPOCHS = args.epochs
@@ -66,7 +63,7 @@ if __name__ == "__main__":
     else:
         # ===== Load The Data =====
         if library == 'tensorflow':
-            train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT)
+            train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
         else:
             raise NotImplementedError(f"LoadData for {library} is not implemented yet")
 

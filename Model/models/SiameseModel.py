@@ -8,14 +8,11 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.saving import register_keras_serializable
 from tensorflow.keras.layers import Input, Dense, Dropout, Layer
 
-
 from TrainFunctions import DumpHistory
 from LoadData import CreateTensorflowDataset
 
-
-
 # Define the base network for feature extraction
-def create_base_network(input_shape, dropout = 0.25, units = [256, 128]):
+def create_base_network(input_shape, dropout = 0.25, units = [64, 32]):
     inputs = Input(shape=input_shape)
     x = Dense(units[0], activation='relu')(inputs)
     x = Dropout(dropout)(x)
@@ -83,7 +80,7 @@ Best model will be saved to best_model.keras
 '''
 
 # Hyperparameter training
-def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 2, bestModelPath = "./BestModel.keras"):
+def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 3, bestModelPath = "./BestModel.keras"):
     histories = []
     bestModelScore = float("inf")
 
@@ -94,11 +91,12 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         nonlocal bestModelScore
 
         # Get a range of values
-        epochs = trial.suggest_int('epochs', 2, 15)
+        epochs = trial.suggest_int('epochs', 2, 5)
         dropout = trial.suggest_float('dropout', 0.1, 0.5)
-        batch_size = trial.suggest_int('batch_size', 32, 128, step=16)
+        # batch_size = trial.suggest_int('batch_size', 32, 512, step=16)
+        batch_size = trial.suggest_categorical('batch_size', [64, 100])
         learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2)
-        # optimizer = trial.suggest_categorical('optimizer', ['adam', 'sgd', 'rmsprop'])
+        # optimizer = trial.suggest_categorical('optimizer', ['adam', 'sgd'])
         optimizer = trial.suggest_categorical('optimizer', ['adam'])
         units = [
             trial.suggest_int('units_1', 128, 512, step=64),
@@ -107,6 +105,14 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         # Early Stopper to prevent overfitting
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
+        print(f"""Testing Parameters:
+        Epochs: {epochs}
+        Dropout: {dropout}
+        Batch Size: {batch_size}
+        Learning Rate: {learning_rate}
+        Optimizer: {optimizer}
+        Units: {units}""")
 
         # Load the dataset
         training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False)

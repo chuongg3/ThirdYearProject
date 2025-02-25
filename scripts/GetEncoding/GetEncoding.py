@@ -132,7 +132,7 @@ def insertFunctionVector(conn, BenchmarkID, row, FunctionMap):
     for FunctionID, FunctionName in row:
         # Process the function name
         functionName = FunctionName[1:].strip('"')
-        updateFunctionVector(conn, BenchmarkID, FunctionID, functionName)
+        updateFunctionVector(conn, BenchmarkID, FunctionID, FunctionMap[functionName])
     print("Finished Inserting Function Vector")
 
 

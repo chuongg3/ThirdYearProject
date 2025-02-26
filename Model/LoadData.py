@@ -16,7 +16,7 @@ def connectToDB(DBLoc):
         return None
     try:
         print(f"Connecting to {DBLoc} .....")
-        conn = sqlite3.connect(DBLoc)
+        conn = sqlite3.connect(DBLoc, check_same_thread=False)
         print(f"Connected to {DBLoc}")
         return conn
     except sqlite3.Error as e:

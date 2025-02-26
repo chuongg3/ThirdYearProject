@@ -12,6 +12,10 @@ import multiprocessing as mp
 def getFileName(DB_FILE):
     return ".".join(DB_FILE.split(".")[:-1])
 
+# Returns the percentage of available memory
+def checkPercentageAvaiMemory(total_memory = psutil.virtual_memory().total):
+    available_memory = psutil.virtual_memory().available
+    return available_memory / total_memory
 
 QUERY = f"""SELECT F1.Encoding AS Encoding1, F2.Encoding AS Encoding2, FunctionPairs.AlignmentScore
 FROM FunctionPairs
@@ -22,52 +26,42 @@ JOIN Functions F2 ON
 FunctionPairs.BenchmarkID = F2.BenchmarkID AND
 FunctionPairs.Function2ID = F2.FunctionID"""
 
-# Function to read data in chunks (each worker runs this)
-def worker(DB_PATH, worker_id, task_queue, result_queue, batch_size):
-    """ Fetches rows from SQLite and processes them. """
-    conn = LoadData.connectToDB(DB_PATH)
-    total_memory = psutil.virtual_memory().total
-    while True:
-        available_memory = psutil.virtual_memory().available
-        while available_memory < total_memory * 0.2:  # If memory is low, sleep
-            print(f"Worker {worker_id}: Memory low ({available_memory / 1024 / 1024:.2f} MB). Sleeping...")
-            time.sleep(120)
-            available_memory = psutil.virtual_memory().available
+def process_chunk(args):
+    """
+    Processes one chunk of data.
 
-        start_row = task_queue.get()
-        if start_row is None:  # Stop signal
-            break
+    Args:
+      args: tuple containing (chunk_index, df) where df is a DataFrame read by pd.read_sql_query.
 
-        # Fetch data in batches
-        if not __debug__:
-            print(f"Worker {worker_id}: Fetching data from {start_row}...")
-        finalquery = f"{QUERY} LIMIT {batch_size} OFFSET {start_row}"
+    Returns:
+      A tuple (chunk_index, Encoding1_arr, Encoding2_arr, AlignmentScore_arr, num_rows)
+    """
+    while checkPercentageAvaiMemory() < 0.2:
+        print("Memory is low. Sleeping ...")
+        time.sleep(120)
 
-        # Use Pandas to load chunked data
-        df = pd.read_sql_query(finalquery, conn)
+    batch_index, df = args
+    # Process each column:
+    print("Processing batch", batch_index)
+    Encoding1_arr = np.vstack(df["Encoding1"].map(lambda x: np.array(pickle.loads(x), dtype=np.float32)))
+    Encoding2_arr = np.vstack(df["Encoding2"].map(lambda x: np.array(pickle.loads(x), dtype=np.float32)))
+    AlignmentScore_arr = df["AlignmentScore"].astype(np.float32).values
+    num_rows = df.shape[0]
+    return (batch_index, Encoding1_arr, Encoding2_arr, AlignmentScore_arr, num_rows)
 
-        # Process data
-        Encoding1_arr = np.vstack(df["Encoding1"].map(lambda x: np.array(pickle.loads(x), dtype=np.float32)))  # Convert list strings to NumPy arrays
-        Encoding2_arr = np.vstack(df["Encoding2"].map(lambda x: np.array(pickle.loads(x), dtype=np.float32)))
-        AlignmentScore_arr = df["AlignmentScore"].astype(np.float32).values  # Already numeric
-
-        # Send results back to main process
-        result_queue.put((Encoding1_arr, Encoding2_arr, AlignmentScore_arr, Encoding1_arr.shape[0]))
-
-    conn.close()
-
-# Function to save a chunk
+# Converts list of ND Arrays and to 2D ND Array and saves to a compressed .npz file.
 def save_chunk(filename, enc1_list, enc2_list, score_list, chunk_index):
+    """
+    Merges lists of NumPy arrays and saves to a compressed .npz file.
+    """
     Encoding1_arr = np.vstack(enc1_list)
     Encoding2_arr = np.vstack(enc2_list)
     AlignmentScore_arr = np.hstack(score_list)
-
-    np.savez_compressed(
-        f"{filename}_{chunk_index}.npz",
-        Encoding1=Encoding1_arr,
-        Encoding2=Encoding2_arr,
-        AlignmentScore=AlignmentScore_arr
-    )
+    print(f"Saving chunk {chunk_index} with {Encoding1_arr.shape[0]} rows ...")
+    np.savez_compressed(f"{filename}_{chunk_index}.npz",
+                        Encoding1=Encoding1_arr,
+                        Encoding2=Encoding2_arr,
+                        AlignmentScore=AlignmentScore_arr)
     print(f"Saved chunk {chunk_index} with {Encoding1_arr.shape[0]} rows.")
 
 # Parse Arguments
@@ -90,64 +84,52 @@ def main():
     filename = getFileName(DB_FILE)
     print(f"File name without extension: {filename}")
 
+    # Open connection (main process reads sequentially)
+    conn = LoadData.connectToDB(DB_FILE)
+
+    # Prepare worker pool.
     """ ===== Main Process ===== """
     print("Starting main process...")
-    task_queue = mp.Queue()
-    result_queue = mp.Queue()
+    pool = mp.Pool(NUM_WORKERS)
 
-    # Get total rows count
-    print("Getting total rows count...")
-    total_rows = LoadData.getDatasetSize(DB_FILE)
-    print(f"Total rows: {total_rows}")
+    # Use read_sql_query with chunksize to create an iterator.
+    print("Reading SQL data...")
+    chunk_gen = pd.read_sql_query(QUERY, conn, chunksize=BATCH_SIZE)
 
-    # Start worker processes
-    print(f"Starting {NUM_WORKERS} workers...")
-    workers = []
-    for i in range(NUM_WORKERS):
-        p = mp.Process(target=worker, args=(DB_FILE, i, task_queue, result_queue, BATCH_SIZE))
-        p.start()
-        workers.append(p)
+    enc1_list = []
+    enc2_list = []
+    score_list = []
+    rows_accumulated = 0
+    save_chunk_index = 0
 
-    # Add tasks to queue (each worker gets different OFFSET)
-    print("Adding tasks to queue...")
-    for offset in range(0, total_rows, BATCH_SIZE):
-        task_queue.put(offset)
+    # Use imap to process chunks as they are read.
+    # IMAP preserves order of results.
+    print(f"Processing chunks with {NUM_WORKERS} workers...")
+    for result in pool.imap(process_chunk, enumerate(chunk_gen)):
+        # result: (chunk_index, Encoding1_arr, Encoding2_arr, AlignmentScore_arr, num_rows)
+        enc1_list.append(result[1])
+        enc2_list.append(result[2])
+        score_list.append(result[3])
+        rows_accumulated += result[-1]  # result[-1] is the number of rows
 
-    # Stop workers
-    print("Stopping workers...")
-    for _ in range(NUM_WORKERS):
-        task_queue.put(None)
+        # Save accumulated results to a chunk
+        if rows_accumulated >= CHUNK_SIZE:
+            save_chunk(filename, enc1_list, enc2_list, score_list, save_chunk_index)
+            save_chunk_index += 1
 
-    # Collect results and write chunks
-    enc1_list, enc2_list, score_list = [], [], []
-    chunk_index, row_count = 0, 0
+            # Reset accumulators for next save chunk
+            enc1_list = []
+            enc2_list = []
+            score_list = []
+            rows_accumulated = 0
 
-    # Process results
-    print("Processing results...")
-    while any(p.is_alive() for p in workers) or not result_queue.empty():
-        if not result_queue.empty():
-            Encoding1_arr, Encoding2_arr, AlignmentScore_arr, batch_rows = result_queue.get()
+    # Save any remaining results
+    if rows_accumulated > 0:
+        save_chunk(filename, enc1_list, enc2_list, score_list, save_chunk_index)
 
-            # Store processed data
-            enc1_list.append(Encoding1_arr)
-            enc2_list.append(Encoding2_arr)
-            score_list.append(AlignmentScore_arr)
-            row_count += batch_rows
-
-            # Save chunk if it reaches CHUNK_SIZE
-            if row_count >= CHUNK_SIZE:
-                save_chunk(filename, enc1_list, enc2_list, score_list, chunk_index)
-                enc1_list, enc2_list, score_list = [], [], []  # Reset
-                row_count = 0
-                chunk_index += 1
-
-    # Save any remaining data
-    if row_count > 0:
-        save_chunk(filename, enc1_list, enc2_list, score_list, chunk_index)
-
-    # Clean up workers
-    for p in workers:
-        p.join()
+    pool.close()
+    pool.join()
+    conn.close()
 
     print("Processing complete!")
 

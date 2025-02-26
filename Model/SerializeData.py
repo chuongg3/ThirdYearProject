@@ -32,6 +32,7 @@ def worker(DB_PATH, worker_id, task_queue, result_queue, batch_size):
         while available_memory < total_memory * 0.2:  # If memory is low, sleep
             print(f"Worker {worker_id}: Memory low ({available_memory / 1024 / 1024:.2f} MB). Sleeping...")
             time.sleep(120)
+            available_memory = psutil.virtual_memory().available
 
         start_row = task_queue.get()
         if start_row is None:  # Stop signal

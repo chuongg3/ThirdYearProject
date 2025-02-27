@@ -64,6 +64,7 @@ if __name__ == "__main__":
         # ===== Load The Data =====
         if library == 'tensorflow':
             train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
+            # train_set, val_set, test_set = LoadData.CreateNumpyDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
         else:
             raise NotImplementedError(f"LoadData for {library} is not implemented yet")
 

@@ -1,12 +1,14 @@
-import sqlite3
-import pickle
-import pandas as pd
 import os
-from torch.utils.data import Dataset, DataLoader
-import torch
-import numpy as np
-import tensorflow as tf
 import time
+import glob
+import torch
+import pickle
+import sqlite3
+import threading
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from concurrent.futures import ProcessPoolExecutor
 
 """ ===== GENERAL FUNCTIONS ===== """
 
@@ -59,6 +61,11 @@ def getDatasetSize(DB_File, condition = ""):
         cursor.execute(query)
         row = cursor.fetchone()
         return row[0]
+
+# Returns a file name without the extension
+# Assuming that all DB_FILE passed through are in the format of "name.db"
+def getFileName(DB_FILE):
+    return ".".join(DB_FILE.split(".")[:-1])
 
 # Get the temporary directories of the data to be generated
 def getTempDirectories(DB_FILE):
@@ -193,6 +200,167 @@ def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 
 
     test_set = tf.data.Dataset.from_generator(
         lambda: TensorflowTrainingDataset(test_path, batch_size, "Testing"),
+        output_signature=(
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
+        )
+    )
+
+    train_set = train_set.prefetch(tf.data.AUTOTUNE)
+    val_set = val_set.prefetch(tf.data.AUTOTUNE)
+    test_set = test_set.prefetch(tf.data.AUTOTUNE)
+
+    print(f"===== Finished Tensorflow Dataset =====")
+    return train_set, val_set, test_set
+
+# Loads NPZ files with memory mapping and returns the arrays.
+def load_npz_arrays(file_path):
+    # It loads the NPZ file with memory mapping and returns the arrays.
+    print(f"[load_npz_arrays] Loading file {file_path} in process id: {os.getpid()}")
+    data = np.load(file_path, mmap_mode="r")
+    enc1 = data["Encoding1"]  # shape: (num_samples, 300)
+    enc2 = data["Encoding2"]  # shape: (num_samples, 300)
+    labels = data["AlignmentScore"]  # shape: (num_samples,)
+    return enc1, enc2, labels
+
+# Dataset which loads data from numpy files
+def LoadNumpyDataset(DB_FILE, batch_size = 64, dataset = "Training"):
+    print(f"Train.py PID: {os.getpid()}")
+
+    # Given the DB_FILE, find the filename to search for the numpy files
+    filename = getFileName(DB_FILE)
+
+    # Get list of all files with that extension
+    print(f"[main] Processing batch in thread id: {threading.get_ident()}")
+    numpyPaths = sorted(glob.glob(f"{filename}_*.npz", ))
+    print(f"{numpyPaths} files found ...")
+
+    # Prints time taken to load dataset
+    if not __debug__:
+        totalTime = 0
+        starttime = time.time()
+
+    # Initialize accumulators for data from multiple files.
+    leftover_enc1 = None
+    leftover_enc2 = None
+    leftover_labels = None
+
+    count = 0
+
+    # Use ThreadPoolExecutor to prefetch the next file.
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        # Create an iterator over the file paths.
+        file_iter = iter(numpyPaths)
+
+        # Prefetch the first file.
+        future = executor.submit(load_npz_arrays, next(file_iter))
+
+        # Loop through all files
+        for file_path in file_iter:
+            # Wait for the current file to be ready.
+            enc1, enc2, labels = future.result()
+            # Immediately schedule the next file.
+            future = executor.submit(load_npz_arrays, file_path)
+            count += enc1.shape[0]
+
+            # If there is leftover data from previous file, concatenate it.
+            if leftover_enc1 is not None:
+                enc1 = np.concatenate([leftover_enc1, enc1], axis=0)
+                enc2 = np.concatenate([leftover_enc2, enc2], axis=0)
+                labels = np.concatenate([leftover_labels, labels], axis=0)
+
+            total_samples = enc1.shape[0]
+            start = 0
+            # Yield full batches using start/end indices.
+            while start + batch_size <= total_samples:
+                end = start + batch_size
+                batch_enc1 = enc1[start:end]
+                batch_enc2 = enc2[start:end]
+                batch_labels = labels[start:end]
+                yield (batch_enc1, batch_enc2), batch_labels
+                start = end
+
+            # Save leftover data from the current file.
+            if start < total_samples:
+                leftover_enc1 = enc1[start:]
+                leftover_enc2 = enc2[start:]
+                leftover_labels = labels[start:]
+            else:
+                leftover_enc1, leftover_enc2, leftover_labels = None, None, None
+
+        # Process the final file that was prefetched.
+        enc1, enc2, labels = future.result()
+        count += enc1.shape[0]
+        if leftover_enc1 is not None:
+            enc1 = np.concatenate([leftover_enc1, enc1], axis=0)
+            enc2 = np.concatenate([leftover_enc2, enc2], axis=0)
+            labels = np.concatenate([leftover_labels, labels], axis=0)
+        total_samples = enc1.shape[0]
+        start = 0
+        while start + batch_size <= total_samples:
+            end = start + batch_size
+            batch_enc1 = enc1[start:end]
+            batch_enc2 = enc2[start:end]
+            batch_labels = labels[start:end]
+            yield (batch_enc1, batch_enc2), batch_labels
+            start = end
+
+        # After processing all files, yield any remaining data (if any).
+        if leftover_enc1 is not None and leftover_enc1.shape[0] > 0:
+            yield (leftover_enc1, leftover_enc2), leftover_labels
+
+    if not __debug__:
+        totalTime = time.time() - starttime
+        print(f"Total time taken to load {count} so far: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
+    print(f"\nSize of dataset ({dataset}): {count}")
+
+
+# Create a Numpy dataset for Tensorflow
+def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, overwrite = False):
+    print(f"===== Loading {DB_FILE} into Numpy Dataset =====")
+    from SplitDB import SplitDB
+
+    # Get the temporary file directory
+    train_path, val_path, test_path = getTempDirectories(DB_FILE)
+
+    # Check if data exists
+    data_exists =  (os.path.exists(train_path) and
+                    os.path.exists(val_path) and
+                    os.path.exists(test_path))
+    print(f"Data exists: {data_exists}")
+
+    # Delete the original files if exists is true and overwrite is true
+    if (data_exists and overwrite):
+        os.remove(train_path)
+        os.remove(val_path)
+        os.remove(test_path)
+
+    # Load the data given the directories
+    if not data_exists or overwrite:
+        SplitDB(DB_FILE, split_size)
+
+    # Load the data into datasets
+    train_set = tf.data.Dataset.from_generator(
+        lambda: LoadNumpyDataset(train_path, batch_size, "Training"),
+        output_signature=(
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
+        )
+    )
+
+    val_set = tf.data.Dataset.from_generator(
+        lambda: LoadNumpyDataset(val_path, batch_size, "Validation"),
+        output_signature=(
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
+        )
+    )
+
+    test_set = tf.data.Dataset.from_generator(
+        lambda: LoadNumpyDataset(test_path, batch_size, "Testing"),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),

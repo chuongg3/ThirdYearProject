@@ -116,6 +116,7 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         # Load the dataset
         training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
+        # train_set, val_set, test_set = LoadData.CreateNumpyDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
 
         # Create the model
         model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)

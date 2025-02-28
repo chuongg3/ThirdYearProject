@@ -11,6 +11,8 @@ def parse_args():
     parser.add_argument('--overwrite', '-w', action='store_true', help='Overwrite the existing data')
     parser.add_argument('--epochs', '-e', type=int, default=10, help='Number of epochs to train')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training')
+    parser.add_argument('--zero_weight', type=float, default=0.001, help='Weight for zero values in the loss function')
+    parser.add_argument('--non_zero_weight', type=float, default=1, help='Weight for non-zero values in the loss function')
     parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for training')
     parser.add_argument('--metrics', type=str, default='mse, mae, mape', help='Metrics to use for training')
     parser.add_argument('--output', '-o', type=str, default="./log/", help='Output directory for logs and models')
@@ -30,6 +32,8 @@ if __name__ == "__main__":
     EPOCHS = args.epochs
     BATCH_SIZE = args.batch_size
     LEARNING_RATE = args.learning_rate
+    ZERO_WEIGHT = args.zero_weight
+    NON_ZERO_WEIGHT = args.zero_weight
     METRICS = TrainFunctions.SplitString(args.metrics)
 
     # ===== Loading the Model =====
@@ -54,7 +58,7 @@ if __name__ == "__main__":
     if TRAINHYPERPARAMETER:
         # ===== Hyperparameter Optimization =====
         print(f"===== HYPERPARAMETER TRAINING =====")
-        bestparams, bestmodel = HyperParameterTraining(DATAPATH, metrics=METRICS, n_trials=1, bestModelPath=PATH)
+        bestparams, bestmodel = HyperParameterTraining(DATAPATH, metrics=METRICS, n_trials=1, bestModelPath=PATH, zero_weight=ZERO_WEIGHT, non_zero_weight=NON_ZERO_WEIGHT)
         print(f"Best Parameters: {bestparams}")
 
         # ===== Evaluate the Best Model =====
@@ -63,8 +67,8 @@ if __name__ == "__main__":
     else:
         # ===== Load The Data =====
         if library == 'tensorflow':
-            train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
-            # train_set, val_set, test_set = LoadData.CreateNumpyDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
+            train_set, val_set, test_set = LoadData.CreateTensorflowDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT, non_zero_weight=NON_ZERO_WEIGHT)
+            train_set, val_set, test_set = LoadData.CreateNumpyDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE, zero_weight=ZERO_WEIGHT, non_zero_weight=NON_ZERO_WEIGHT)
         else:
             raise NotImplementedError(f"LoadData for {library} is not implemented yet")
 

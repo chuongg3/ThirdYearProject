@@ -80,7 +80,7 @@ Best model will be saved to best_model.keras
 '''
 
 # Hyperparameter training
-def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 3, bestModelPath = "./BestModel.keras"):
+def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 2, bestModelPath = "./BestModel.keras", zero_weight=0.001, non_zero_weight=1):
     histories = []
     bestModelScore = float("inf")
 
@@ -115,8 +115,8 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         Units: {units}""")
 
         # Load the dataset
-        training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
-        # training_set, validation_set, test_set = CreateNumpyDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
+        # training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False, zero_weight=zero_weight, non_zero_weight=non_zero_weight)
+        training_set, validation_set, test_set = CreateNumpyDataset(DATA_PATH, batch_size=batch_size, overwrite=False, zero_weight=zero_weight, non_zero_weight=non_zero_weight)
 
         # Create the model
         model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)

@@ -81,7 +81,7 @@ def DumpHistory(histories, modelPath):
 def getTestNonZeroData(DB_FILE, sqlite_batch = 1000):
     condition = "WHERE AlignmentScore != 0"
 
-    dataset = LoadData.LoadDataset(DB_FILE, sqlite_batch, condition=condition)
+    dataset = LoadData.LoadSQLDataset(DB_FILE, sqlite_batch, condition=condition)
     return dataset
 
 # Evaluates using all data and non-zero data
@@ -93,7 +93,7 @@ def EvaluateModel(model, dataPath, metrics, batch_size = 32):
 
     # Evaluate Model on All Data
     print("===== ALL TEST DATA =====")
-    all_data = LoadData.LoadDataset(paths[2])
+    all_data = LoadData.LoadSQLDataset(paths[2])
     all_eval = model.evaluate(all_data)
     print(f"Test Loss: {all_eval[0]}")
     for idx, metric in enumerate(metrics):

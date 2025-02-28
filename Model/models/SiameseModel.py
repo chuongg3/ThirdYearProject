@@ -9,7 +9,7 @@ from tensorflow.keras.saving import register_keras_serializable
 from tensorflow.keras.layers import Input, Dense, Dropout, Layer
 
 from TrainFunctions import DumpHistory
-from LoadData import CreateTensorflowDataset
+from LoadData import CreateTensorflowDataset, CreateNumpyDataset
 
 # Define the base network for feature extraction
 def create_base_network(input_shape, dropout = 0.25, units = [64, 32]):
@@ -116,7 +116,7 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         # Load the dataset
         training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
-        # train_set, val_set, test_set = LoadData.CreateNumpyDataset(DATAPATH, batch_size=BATCH_SIZE, overwrite=OVERWRITE)
+        # training_set, validation_set, test_set = CreateNumpyDataset(DATA_PATH, batch_size=batch_size, overwrite=False)
 
         # Create the model
         model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)

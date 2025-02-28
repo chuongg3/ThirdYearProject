@@ -142,7 +142,7 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
         print(f"\nSize of dataset ({dataset}): {count}")
 
 # Loads a dataset given the condition
-def LoadDataset(DB_FILE, sqlite_batch = 1000, condition = ""):
+def LoadSQLDataset(DB_FILE, sqlite_batch = 64, condition = ""):
     dataset = tf.data.Dataset.from_generator(
         lambda: TensorflowTrainingDataset(DB_FILE, sqlite_batch, condition, condition),
         output_signature=(
@@ -225,7 +225,7 @@ def load_npz_arrays(file_path):
     return enc1, enc2, labels
 
 # Dataset which loads data from numpy files
-def LoadNumpyDataset(DB_FILE, batch_size = 64, dataset = "Training"):
+def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training"):
     print(f"Train.py PID: {os.getpid()}")
 
     # Given the DB_FILE, find the filename to search for the numpy files
@@ -315,6 +315,19 @@ def LoadNumpyDataset(DB_FILE, batch_size = 64, dataset = "Training"):
         print(f"Total time taken to load {count} so far: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
     print(f"\nSize of dataset ({dataset}): {count}")
 
+# Loads a dataset given the condition
+def LoadNumpyDataset(DB_FILE, sqlite_batch = 64, dataset = "Training"):
+    dataset = tf.data.Dataset.from_generator(
+        lambda: NumpyDataset(DB_FILE, sqlite_batch, dataset=dataset),
+        output_signature=(
+            (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
+             tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
+            tf.TensorSpec(shape=(None, ), dtype=tf.float32)
+        )
+    )
+
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    return dataset
 
 # Create a Numpy dataset for Tensorflow
 def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, overwrite = False):
@@ -342,7 +355,7 @@ def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, o
 
     # Load the data into datasets
     train_set = tf.data.Dataset.from_generator(
-        lambda: LoadNumpyDataset(train_path, batch_size, "Training"),
+        lambda: NumpyDataset(train_path, batch_size, "Training"),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
@@ -351,7 +364,7 @@ def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, o
     )
 
     val_set = tf.data.Dataset.from_generator(
-        lambda: LoadNumpyDataset(val_path, batch_size, "Validation"),
+        lambda: NumpyDataset(val_path, batch_size, "Validation"),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),
@@ -360,7 +373,7 @@ def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, o
     )
 
     test_set = tf.data.Dataset.from_generator(
-        lambda: LoadNumpyDataset(test_path, batch_size, "Testing"),
+        lambda: NumpyDataset(test_path, batch_size, "Testing"),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),

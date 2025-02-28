@@ -316,9 +316,9 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training"):
     print(f"\nSize of dataset ({dataset}): {count}")
 
 # Loads a dataset given the condition
-def LoadNumpyDataset(DB_FILE, sqlite_batch = 64, dataset = "Training"):
+def LoadNumpyDataset(DB_FILE, sqlite_batch = 64, dataset_name = "Training"):
     dataset = tf.data.Dataset.from_generator(
-        lambda: NumpyDataset(DB_FILE, sqlite_batch, dataset=dataset),
+        lambda: NumpyDataset(DB_FILE, sqlite_batch, dataset=dataset_name),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),

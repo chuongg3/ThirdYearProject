@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import glob
 import torch
@@ -219,6 +220,10 @@ def CreateTensorflowDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 
     print(f"===== Finished Tensorflow Dataset =====")
     return train_set, val_set, test_set
 
+def natural_keys(text):
+    """Sort helper that converts numeric parts to integers."""
+    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
+
 # Loads NPZ files with memory mapping and returns the arrays.
 def load_npz_arrays(file_path):
     # It loads the NPZ file with memory mapping and returns the arrays.
@@ -237,7 +242,8 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
     filename = getFileName(DB_FILE)
 
     # Get list of all files with that extension
-    numpyPaths = sorted(glob.glob(f"{filename}_*.npz", ))
+    numpyPaths = sorted(glob.glob(f"{filename}_*.npz"),
+                        key=lambda x: natural_keys(os.path.basename(x)))
     print(f"{numpyPaths} files found ...")
 
     # Prints time taken to load dataset

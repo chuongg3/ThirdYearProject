@@ -9,7 +9,7 @@ import threading
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 """ ===== GENERAL FUNCTIONS ===== """
 
@@ -228,10 +228,10 @@ def natural_keys(text):
 def load_npz_arrays(file_path):
     # It loads the NPZ file with memory mapping and returns the arrays.
     print(f"[load_npz_arrays] Loading file {file_path} in process id: {os.getpid()}")
-    data = np.load(file_path, mmap_mode="r")
-    enc1 = data["Encoding1"]  # shape: (num_samples, 300)
-    enc2 = data["Encoding2"]  # shape: (num_samples, 300)
-    labels = data["AlignmentScore"]  # shape: (num_samples,)
+    with np.load(file_path, mmap_mode="r") as data:
+        enc1 = data["Encoding1"]  # shape: (num_samples, 300)
+        enc2 = data["Encoding2"]  # shape: (num_samples, 300)
+        labels = data["AlignmentScore"]  # shape: (num_samples,)
     return enc1, enc2, labels
 
 # Dataset which loads data from numpy files
@@ -259,7 +259,7 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
     count = 0
 
     # Use ThreadPoolExecutor to prefetch the next file.
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         # Create an iterator over the file paths.
         file_iter = iter(numpyPaths)
 

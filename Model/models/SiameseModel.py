@@ -80,9 +80,12 @@ Best model will be saved to best_model.keras
 '''
 
 # Hyperparameter training
-def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 2, bestModelPath = "./BestModel.keras", zero_weight=0.001, non_zero_weight=1):
+def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials = 5, bestModelPath = "./BestModel.keras", zero_weight=0.001, non_zero_weight=1):
     histories = []
     bestModelScore = float("inf")
+    print(f"Hyperparameter Training with {n_trials} trials")
+    print(f"Zero Weight: {zero_weight}")
+    print(f"Non-Zero Weight: {non_zero_weight}")
 
     # Define the objective function
     def objective(trial):
@@ -91,7 +94,7 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         nonlocal bestModelScore
 
         # Get a range of values
-        epochs = trial.suggest_int('epochs', 2, 5)
+        epochs = trial.suggest_int('epochs', 2, 10)
         dropout = trial.suggest_float('dropout', 0.1, 0.5)
         # batch_size = trial.suggest_int('batch_size', 32, 512, step=16)
         batch_size = trial.suggest_categorical('batch_size', [64, 100])

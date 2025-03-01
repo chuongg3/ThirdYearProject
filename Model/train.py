@@ -6,6 +6,7 @@ import LoadData
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a model")
     parser.add_argument('--hyperparameter', '-hp', action='store_true', help='Perform hyperparameter optimization')
+    parser.add_argument('--trials', '-t', type=int, default=1, help='Number of Trials for hyperparameter optimization')
     parser.add_argument('--model', '-m', type=str, default="SiameseModel", help='Model name')
     parser.add_argument('--data', '-d', type=str, default="./data/benchmark.db", help='Path to the data file')
     parser.add_argument('--overwrite', '-w', action='store_true', help='Overwrite the existing data')
@@ -27,13 +28,14 @@ if __name__ == "__main__":
     TRAINHYPERPARAMETER = True if args.hyperparameter else False
     MODEL = args.model
     OVERWRITE = True if args.overwrite else False
+    TRIALS = args.trials
 
     # Model Related Parameters
     EPOCHS = args.epochs
     BATCH_SIZE = args.batch_size
     LEARNING_RATE = args.learning_rate
     ZERO_WEIGHT = args.zero_weight
-    NON_ZERO_WEIGHT = args.zero_weight
+    NON_ZERO_WEIGHT = args.non_zero_weight
     METRICS = TrainFunctions.SplitString(args.metrics)
 
     # ===== Loading the Model =====
@@ -58,7 +60,7 @@ if __name__ == "__main__":
     if TRAINHYPERPARAMETER:
         # ===== Hyperparameter Optimization =====
         print(f"===== HYPERPARAMETER TRAINING =====")
-        bestparams, bestmodel = HyperParameterTraining(DATAPATH, metrics=METRICS, n_trials=1, bestModelPath=PATH, zero_weight=ZERO_WEIGHT, non_zero_weight=NON_ZERO_WEIGHT)
+        bestparams, bestmodel = HyperParameterTraining(DATAPATH, metrics=METRICS, n_trials=TRIALS, bestModelPath=PATH, zero_weight=ZERO_WEIGHT, non_zero_weight=NON_ZERO_WEIGHT)
         print(f"Best Parameters: {bestparams}")
 
         # ===== Evaluate the Best Model =====

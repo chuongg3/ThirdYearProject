@@ -96,6 +96,27 @@ def convertRowToNDArray(row):
 
     return x1, x2, y
 
+def calculateSampleWeight(AlignmentScores):
+    # Define conditions
+    conditions = [
+        (AlignmentScores == 0),
+        (0 < AlignmentScores) & (AlignmentScores <= 0.1),
+        (0.1 < AlignmentScores) & (AlignmentScores <= 0.2),
+        (0.2 < AlignmentScores) & (AlignmentScores <= 0.5),
+        (0.2 < AlignmentScores) & (AlignmentScores <= 0.8),
+        (0.8 < AlignmentScores) & (AlignmentScores < 1),
+        (AlignmentScores == 1)
+    ]
+
+    # Define corresponding values
+    values = [0.28, 0.32, 5.71, 5.93, 28.01, 52.94, 92.13]
+
+    # Apply np.select
+    result = np.select(conditions, values, default=-1)  # Default for unmatched cases
+
+    return result
+
+
 """ ===== Tensorflow Related Datasets ===== """
 
 # Tensorflow dataset which loads only the necessary data
@@ -134,7 +155,7 @@ FunctionPairs.Function2ID = F2.FunctionID {condition}"""
             x1, x2, y = convertRowToNDArray(rows)
             if not __debug__:
                 totalTime += (time.time() - starttime)
-            sample_weight = np.where(y == 0, zero_weight, non_zero_weight)
+            sample_weight = calculateSampleWeight(y)
             yield (x1, x2), y, sample_weight
             count += len(rows)
 
@@ -288,7 +309,7 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
                 batch_enc1 = enc1[start:end]
                 batch_enc2 = enc2[start:end]
                 batch_labels = labels[start:end]
-                sample_weight = np.where(batch_labels == 0, zero_weight, non_zero_weight)
+                sample_weight = calculateSampleWeight(batch_labels)
                 yield (batch_enc1, batch_enc2), batch_labels, sample_weight
                 start = end
 
@@ -314,13 +335,13 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
             batch_enc1 = enc1[start:end]
             batch_enc2 = enc2[start:end]
             batch_labels = labels[start:end]
-            sample_weight = np.where(batch_labels == 0, zero_weight, non_zero_weight)
+            sample_weight = calculateSampleWeight(batch_labels)
             yield (batch_enc1, batch_enc2), batch_labels, sample_weight
             start = end
 
         # After processing all files, yield any remaining data (if any).
         if leftover_enc1 is not None and leftover_enc1.shape[0] > 0:
-            sample_weight = np.where(leftover_labels == 0, zero_weight, non_zero_weight)
+            sample_weight = calculateSampleWeight(leftover_labels)
             yield (leftover_enc1, leftover_enc2), leftover_labels, sample_weight
 
     if not __debug__:

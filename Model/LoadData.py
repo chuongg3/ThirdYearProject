@@ -423,7 +423,7 @@ def CreateNumpyDataset(DB_FILE, split_size = (0.7, 0.1, 0.2), batch_size = 64, o
     val_set = val_set.prefetch(tf.data.AUTOTUNE)
     test_set = test_set.prefetch(tf.data.AUTOTUNE)
 
-    print(f"===== Finished Tensorflow Dataset =====")
+    print(f"===== Finished Numpy Dataset =====")
     return train_set, val_set, test_set
 
 

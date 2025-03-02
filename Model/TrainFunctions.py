@@ -5,6 +5,7 @@ import pickle
 import LoadData
 from datetime import datetime
 import time
+from LoadData import CreateNumpyDataset
 
 # TODO: Load data using pytorch dataset
 def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
@@ -93,8 +94,8 @@ def EvaluateModel(model, dataPath, metrics, batch_size = 32):
 
     # Evaluate Model on All Data
     print("===== ALL TEST DATA =====")
-    all_data = LoadData.LoadSQLDataset(paths[2])
-    all_eval = model.evaluate(all_data)
+    _, _, test_set = CreateNumpyDataset(dataPath, batch_size=batch_size, overwrite=False)
+    all_eval = model.evaluate(test_set)
     print(f"Test Loss: {all_eval[0]}")
     for idx, metric in enumerate(metrics):
         print(f"Test {metric}: {all_eval[idx + 1]}")

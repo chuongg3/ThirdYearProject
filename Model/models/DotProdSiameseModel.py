@@ -1,69 +1,60 @@
 import time
 import optuna
+import pickle
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import Model
-from tensorflow.keras.saving import register_keras_serializable
-from tensorflow.keras.layers import Input, Dense, Dropout, Layer
+from tensorflow.keras.layers import Input, Dense, Dropout, Dot, Activation
 
 from TrainFunctions import DumpHistory
 from LoadData import CreateTensorflowDataset, CreateNumpyDataset
 
-# Define the base network for feature extraction
-def create_base_network(input_shape, dropout = 0.25, units = [64, 32]):
-    inputs = Input(shape=input_shape)
-    x = Dense(units[0], activation='relu')(inputs)
+# Shared encoder with multiple Dense layers
+def encoder(input_shape = (300,), dropout = 0.3):
+    inputs = Input(shape=(300,))
+    x = Dense(512, activation="relu")(inputs)
     x = Dropout(dropout)(x)
-    outputs = Dense(units[1], activation='relu')(x)
-    return Model(inputs, outputs)
+    x = Dense(256, activation="relu")(x)
+    x = Dropout(dropout)(x)
+    x = Dense(128, activation="relu")(x)
+    return Model(inputs, x)
 
-@register_keras_serializable()
-class L1Distance(Layer):
-    def __init__(self, **kwargs):
-        super(L1Distance, self).__init__(**kwargs)
-
-    def call(self, inputs):
-        x, y = inputs
-        return K.abs(x - y)
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0]  # Output shape is the same as the input shapes
-
-def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics = ['mse', 'mae', 'mape'], dropout=0.25, units=[256, 128]):
-    print(" ===== Creating L1 Siamese Model =====")
+def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics = ['mse', 'mae', 'mape'], dropout=0.25, units=[]):
+    print(" ===== Creating Dot Product Siamese Model =====")
 
     # Define input shape
     input_shape = (300,)
 
     # Create the base network
-    base_network = create_base_network(input_shape, dropout, units)
+    shared_encoder = encoder(input_shape=input_shape, dropout=dropout)
 
-    # Siamese network inputs
-    input_a = Input(shape=input_shape)
-    input_b = Input(shape=input_shape)
+    # Inputs for two function embeddings
+    input1 = Input(shape=input_shape)
+    input2 = Input(shape=input_shape)
 
     # Generate embeddings
-    embedding_a = base_network(input_a)
-    embedding_b = base_network(input_b)
+    encoded1 = shared_encoder(input1)
+    encoded2 = shared_encoder(input2)
 
-    distance = L1Distance()([embedding_a, embedding_b])
+    # Compute dot product similarity
+    dot_product = Dot(axes=1)([encoded1, encoded2])
 
-    # Output layer for similarity score (0 to 1 range)
-    output = Dense(1, activation='sigmoid')(distance)
+    # Normalize with sigmoid to ensure output is in [0,1]
+    similarity_score = Activation("sigmoid")(dot_product)
 
-    # Define the Siamese model
-    siamese_model = Model(inputs=[input_a, input_b], outputs=output)
+    # Create model
+    model = Model(inputs=[input1, input2], outputs=similarity_score)
 
-    # Compile the model
+    # Compile model with regression loss
     optimizer_instance = tf.keras.optimizers.get(optimizer)
     optimizer_instance.learning_rate = learning_rate
-    siamese_model.compile(loss=loss, optimizer=optimizer_instance, metrics=metrics)
+    model.compile(optimizer=optimizer_instance, loss=loss, metrics=metrics)
 
-    # Model summary
-    siamese_model.summary()
+    # Print model summary
+    model.summary()
 
-    return siamese_model
+    return model
 
 '''
 ===== HYPERPARAMETER TRAINING =====
@@ -72,7 +63,6 @@ Hyper-Parameters:
  - Epoch
  - Dropout Rate
  - Learning Rate
- - Number of Units
  - Optimizer
  - Batch Size
 
@@ -102,10 +92,6 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2)
         # optimizer = trial.suggest_categorical('optimizer', ['adam', 'sgd'])
         optimizer = trial.suggest_categorical('optimizer', ['adam'])
-        units = [
-            trial.suggest_int('units_1', 128, 512, step=64),
-            trial.suggest_int('units_2', 64, 256, step=64)
-        ]
 
         # Early Stopper to prevent overfitting
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
@@ -115,15 +101,14 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         Dropout: {dropout}
         Batch Size: {batch_size}
         Learning Rate: {learning_rate}
-        Optimizer: {optimizer}
-        Units: {units}""")
+        Optimizer: {optimizer}""")
 
         # Load the dataset
         # training_set, validation_set, test_set = CreateTensorflowDataset(DATA_PATH, batch_size=batch_size, overwrite=False, zero_weight=zero_weight, non_zero_weight=non_zero_weight)
         training_set, validation_set, test_set = CreateNumpyDataset(DATA_PATH, batch_size=batch_size, overwrite=False, zero_weight=zero_weight, non_zero_weight=non_zero_weight)
 
         # Create the model
-        model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)
+        model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout)
         startTime = time.time()
         history = model.fit(training_set, epochs=epochs, validation_data=validation_set, callbacks=[early_stopping])
         totalTime = time.time() - startTime
@@ -144,7 +129,6 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         information['batch_size'] = batch_size
         information['learning_rate'] = learning_rate
         information['optimizer'] = optimizer
-        information['units'] = units
         information['history'] = history.history
 
         histories.append(information)

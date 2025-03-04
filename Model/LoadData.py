@@ -96,23 +96,32 @@ def convertRowToNDArray(row):
 
     return x1, x2, y
 
+def calculateSampleWeights(number_weights):
+    total = sum(number_weights)
+    num_classes = len(number_weights)
+
+    sample_weights = [total/(num_classes * num) for num in number_weights]
+    return sample_weights
+
 def calculateSampleWeight(AlignmentScores):
-    # Define conditions
-    conditions = [
-        (AlignmentScores == 0),
-        (0 < AlignmentScores) & (AlignmentScores <= 0.1),
-        (0.1 < AlignmentScores) & (AlignmentScores <= 0.2),
-        (0.2 < AlignmentScores) & (AlignmentScores <= 0.5),
-        (0.2 < AlignmentScores) & (AlignmentScores <= 0.8),
-        (0.8 < AlignmentScores) & (AlignmentScores < 1),
-        (AlignmentScores == 1)
-    ]
+    # # Define conditions
+    # conditions = [
+    #     (AlignmentScores == 0),
+    #     (0 < AlignmentScores) & (AlignmentScores <= 0.1),
+    #     (0.1 < AlignmentScores) & (AlignmentScores <= 0.2),
+    #     (0.2 < AlignmentScores) & (AlignmentScores <= 0.5),
+    #     (0.2 < AlignmentScores) & (AlignmentScores <= 0.8),
+    #     (0.8 < AlignmentScores) & (AlignmentScores < 1),
+    #     (AlignmentScores == 1)
+    # ]
 
-    # Define corresponding values
-    values = [0.28, 0.32, 5.71, 5.93, 28.01, 52.94, 92.13]
+    # # Define corresponding values
+    # values = [0.01, 0.32, 5.71, 5.93, 28.01, 52.94, 92.13]
 
-    # Apply np.select
-    result = np.select(conditions, values, default=-1)  # Default for unmatched cases
+    # # Apply np.select
+    # result = np.select(conditions, values, default=-1)  # Default for unmatched cases
+
+    result = np.where(AlignmentScores == 0, 0.001, 1)
 
     return result
 

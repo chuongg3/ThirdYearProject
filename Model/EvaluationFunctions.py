@@ -63,7 +63,7 @@ def PlotTrueVsPredicted(sampled_trues, sampled_predictions, graph_name):
     """
     # Scatter plot of predictions vs actual alignment scores
     plt.figure(figsize=(12, 6))
-    plt.scatter(sampled_trues, sampled_predictions, alpha=0.5)
+    plt.scatter(sampled_trues, sampled_predictions, alpha=0.05)
     plt.plot([0, 1], [0, 1], 'r--')  # Line for reference
     plt.title(f'{graph_name} Predictions vs Actual Alignment Scores')
     plt.xlabel('Actual Alignment Scores')

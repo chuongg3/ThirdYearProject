@@ -11,6 +11,8 @@ import pandas as pd
 import tensorflow as tf
 from concurrent.futures import ThreadPoolExecutor
 
+_NEW_DATASET = True
+
 """ ===== GENERAL FUNCTIONS ===== """
 
 def connectToDB(DBLoc):
@@ -122,7 +124,6 @@ def calculateSampleWeight(AlignmentScores):
     # result = np.select(conditions, values, default=-1)  # Default for unmatched cases
 
     result = np.where(AlignmentScores == 0, 0.001, 1)
-
     return result
 
 
@@ -255,12 +256,21 @@ def natural_keys(text):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 # Loads NPZ files with memory mapping and returns the arrays.
-def load_npz_arrays(file_path):
+def load_npz_arrays(file_path, encodings=None):
     # It loads the NPZ file with memory mapping and returns the arrays.
     print(f"[load_npz_arrays] Loading file {file_path} in process id: {os.getpid()}")
     with np.load(file_path, mmap_mode="r") as data:
-        enc1 = data["Encoding1"]  # shape: (num_samples, 300)
-        enc2 = data["Encoding2"]  # shape: (num_samples, 300)
+        if _NEW_DATASET:
+            assert encodings is not None
+            print("Using new dataset")
+            func1IDs = data["func1IDs"]  # shape: (num_samples,)
+            enc1 = encodings[func1IDs]   # shape: (num_samples, 300)
+            func2IDs = data["func2IDs"]  # shape: (num_samples,)
+            enc2 = encodings[func2IDs]   # shape: (num_samples, 300)
+        else:
+            enc1 = data["Encoding1"]  # shape: (num_samples, 300)
+            enc2 = data["Encoding2"]  # shape: (num_samples, 300)
+
         labels = data["AlignmentScore"]  # shape: (num_samples,)
     return enc1, enc2, labels
 
@@ -293,15 +303,22 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
         # Create an iterator over the file paths.
         file_iter = iter(numpyPaths)
 
+        encodings = None
+        if _NEW_DATASET:
+            print("Using new dataset")
+            encodings_file = f'{filename}_encodings.npy'
+            print(f"[NumpyDataset] Loading file {encodings_file} in process id: {os.getpid()}")
+            encodings = np.load(encodings_file, mmap_mode="r")
+
         # Prefetch the first file.
-        future = executor.submit(load_npz_arrays, next(file_iter))
+        future = executor.submit(load_npz_arrays, next(file_iter), encodings)
 
         # Loop through all files
         for file_path in file_iter:
             # Wait for the current file to be ready.
             enc1, enc2, labels = future.result()
             # Immediately schedule the next file.
-            future = executor.submit(load_npz_arrays, file_path)
+            future = executor.submit(load_npz_arrays, next(file_iter), encodings)
             count += enc1.shape[0]
 
             # If there is leftover data from previous file, concatenate it.

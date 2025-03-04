@@ -6,6 +6,7 @@ import LoadData
 from datetime import datetime
 import time
 from LoadData import CreateNumpyDataset
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 # TODO: Load data using pytorch dataset
 def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqlite_batch = 1000):
@@ -15,12 +16,19 @@ def LoadDataPytorch(DB_File, batch_size = 32, split_size = (0.7, 0.1, 0.2), sqli
 
 
 # Trains the model using tensorflow
-def TrainTensorflowModel(model, train_set, val_set, epochs = 10, batch_size = 32):
+def TrainTensorflowModel(model, train_set, val_set, modelPath, epochs = 10, batch_size = 32):
     print(f"Training the model using tensorflow")
+
+    dir = os.path.dirname(modelPath)
+    file = os.path.basename(modelPath).split('.keras')[0]
+    filename = os.path.join(dir, f"{file}_{epochs}_{batch_size}_checkpoint.keras")
+
+    # Create checkpoint callback
+    cp_callback = ModelCheckpoint(filepath=filename, save_weights_only=False, verbose=1)
 
     # Fit the model
     startTime = time.time()
-    history = model.fit(train_set, epochs=epochs, validation_data=val_set)
+    history = model.fit(train_set, epochs=epochs, validation_data=val_set, callbacks=[cp_callback])
     totalTime = time.time() - startTime
     print(f"Time taken for the model to run: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
 

@@ -82,7 +82,7 @@ if __name__ == "__main__":
         print(f"Training for {args.epochs} epochs with batch size {args.batch_size} and learning rate {args.learning_rate}")
         if (library == 'tensorflow'):
             model = get_model(learning_rate=LEARNING_RATE, metrics=METRICS)
-            model, history = TrainFunctions.TrainTensorflowModel(model, train_set, val_set, epochs=EPOCHS, batch_size=BATCH_SIZE)
+            model, history = TrainFunctions.TrainTensorflowModel(model, train_set, val_set, PATH, epochs=EPOCHS, batch_size=BATCH_SIZE)
 
             # Dump the model and the history
             TrainFunctions.DumpModel(model, PATH, library, history.history)

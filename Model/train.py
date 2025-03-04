@@ -45,10 +45,14 @@ if __name__ == "__main__":
         library = 'tensorflow'
         from models.SiameseModel import get_model
         from models.SiameseModel import HyperParameterTraining
-    if args.model == "DotProdSiameseModel":
+    elif args.model == "DotProdSiameseModel":
         library = 'tensorflow'
         from models.DotProdSiameseModel import get_model
         from models.DotProdSiameseModel import HyperParameterTraining
+    elif args.model == "MultiHeadAttentionModel":
+        library = 'tensorflow'
+        from models.MultiHeadAttentionModel import get_model
+        from models.MultiHeadAttentionModel import HyperParameterTraining
     else:
         print(f"ERROR: {args.model} is not a valid model")
         exit(1)

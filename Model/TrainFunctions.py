@@ -21,7 +21,7 @@ def TrainTensorflowModel(model, train_set, val_set, modelPath, epochs = 10, batc
 
     dir = os.path.dirname(modelPath)
     file = os.path.basename(modelPath).split('.keras')[0]
-    filename = os.path.join(dir, f"{file}_{epochs}_{batch_size}_checkpoint.keras")
+    filename = os.path.join(dir, f"{file}_{epochs}_{batch_size}_checkpoint_{{epoch:02d}}.keras")
 
     # Create checkpoint callback
     cp_callback = ModelCheckpoint(filepath=filename, save_weights_only=False, verbose=1)

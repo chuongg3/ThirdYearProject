@@ -256,7 +256,7 @@ def natural_keys(text):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 # Loads NPZ files with memory mapping and returns the arrays.
-def load_npz_arrays(file_path, encodings=None):
+def load_npz_arrays(file_path, encodings=None, condition=None):
     # It loads the NPZ file with memory mapping and returns the arrays.
     print(f"[load_npz_arrays] Loading file {file_path} in process id: {os.getpid()}")
     with np.load(file_path, mmap_mode="r") as data:
@@ -272,10 +272,17 @@ def load_npz_arrays(file_path, encodings=None):
             enc2 = data["Encoding2"]  # shape: (num_samples, 300)
 
         labels = data["AlignmentScore"]  # shape: (num_samples,)
-    return enc1, enc2, labels
+    if condition is None:
+        return enc1, enc2, labels
+    else:
+        indices = np.where(condition(labels))
+        enc1 = enc1[indices]
+        enc2 = enc2[indices]
+        labels = labels[indices]
+        return enc1, enc2, labels
 
 # Dataset which loads data from numpy files
-def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0.001, non_zero_weight = 1):
+def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0.001, non_zero_weight = 1, condition=None):
     print(f"[main] Processing batch in process id: {os.getpid()}")
 
     # Given the DB_FILE, find the filename to search for the numpy files
@@ -311,14 +318,14 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
             encodings = np.load(encodings_file, mmap_mode="r")
 
         # Prefetch the first file.
-        future = executor.submit(load_npz_arrays, next(file_iter), encodings)
+        future = executor.submit(load_npz_arrays, next(file_iter), encodings, condition)
 
         # Loop through all files
         for file_path in file_iter:
             # Wait for the current file to be ready.
             enc1, enc2, labels = future.result()
             # Immediately schedule the next file.
-            future = executor.submit(load_npz_arrays, file_path, encodings)
+            future = executor.submit(load_npz_arrays, file_path, encodings, condition)
             count += enc1.shape[0]
 
             # If there is leftover data from previous file, concatenate it.
@@ -376,9 +383,9 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
     print(f"\nSize of dataset ({dataset}): {count}")
 
 # Loads a dataset given the condition
-def LoadNumpyDataset(DB_FILE, sqlite_batch = 64, dataset_name = "Training", zero_weight = 0.001, non_zero_weight = 1):
+def LoadNumpyDataset(DB_FILE, sqlite_batch = 64, dataset_name = "Training", zero_weight = 0.001, non_zero_weight = 1, condition=None):
     dataset = tf.data.Dataset.from_generator(
-        lambda: NumpyDataset(DB_FILE, sqlite_batch, dataset=dataset_name, zero_weight=zero_weight, non_zero_weight=non_zero_weight),
+        lambda: NumpyDataset(DB_FILE, sqlite_batch, dataset=dataset_name, zero_weight=zero_weight, non_zero_weight=non_zero_weight, condition=condition),
         output_signature=(
             (tf.TensorSpec(shape=(None, 300), dtype=tf.float32),
              tf.TensorSpec(shape=(None, 300), dtype=tf.float32)),

@@ -318,7 +318,7 @@ def NumpyDataset(DB_FILE, batch_size = 64, dataset = "Training", zero_weight = 0
             # Wait for the current file to be ready.
             enc1, enc2, labels = future.result()
             # Immediately schedule the next file.
-            future = executor.submit(load_npz_arrays, next(file_iter), encodings)
+            future = executor.submit(load_npz_arrays, file_path, encodings)
             count += enc1.shape[0]
 
             # If there is leftover data from previous file, concatenate it.

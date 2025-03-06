@@ -25,7 +25,7 @@ def simple_transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0.1
     
     return x
 
-def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics=['mse', 'mae', 'mape'], dropout=0.25, head_size=64, num_heads=4, ff_dim=128):
+def get_model(loss="mean_squared_error", optimizer="sgd", learning_rate=0.0008483268515270536, metrics=['mse', 'mae', 'mape'], dropout=0.3757168539447645, head_size=64, num_heads=4, ff_dim=64):
     print(" ====== Creating Multi-Head Attention Model ====== ")    
 
     # Define two separate 300-dimensional inputs.

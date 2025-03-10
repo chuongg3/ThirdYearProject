@@ -5,19 +5,24 @@ import pickle
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Dropout, Dot, Activation
+from tensorflow.keras.initializers import Constant
+from tensorflow.keras.layers import Input, Dense, Dropout, Dot, Activation, Normalization, BatchNormalization, Add, Multiply
 
 from TrainFunctions import DumpHistory
 from LoadData import CreateTensorflowDataset, CreateNumpyDataset
 
 # Shared encoder with multiple Dense layers
 def encoder(input_shape = (300,), dropout = 0.3):
-    inputs = Input(shape=(300,))
+    inputs = Input(shape=input_shape)
+
     x = Dense(512, activation="relu")(inputs)
     x = Dropout(dropout)(x)
-    x = Dense(256, activation="relu")(x)
-    x = Dropout(dropout)(x)
+
     x = Dense(128, activation="relu")(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(64, activation="relu")(x)
+
     return Model(inputs, x)
 
 def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics = ['mse', 'mae', 'mape'], dropout=0.25, units=[]):
@@ -37,8 +42,13 @@ def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, 
     encoded1 = shared_encoder(input1)
     encoded2 = shared_encoder(input2)
 
+    # Add normalization layer to the encoded output
+    normalizer = BatchNormalization(axis=-1)
+    normalized_encoded1 = normalizer(encoded1)
+    normalized_encoded2 = normalizer(encoded2)
+
     # Compute dot product similarity
-    dot_product = Dot(axes=1)([encoded1, encoded2])
+    dot_product = Dot(axes=1)([normalized_encoded1, normalized_encoded2])
 
     # Normalize with sigmoid to ensure output is in [0,1]
     similarity_score = Activation("sigmoid")(dot_product)

@@ -4,8 +4,10 @@ import optuna
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.saving import register_keras_serializable
 from tensorflow.keras.layers import Input, Dense, Dropout, Layer
+
 
 from TrainFunctions import DumpHistory
 from LoadData import CreateTensorflowDataset, CreateNumpyDataset
@@ -30,7 +32,7 @@ class L1Distance(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape[0]  # Output shape is the same as the input shapes
 
-def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics = ['mse', 'mae', 'mape'], dropout=0.25, units=[256, 128]):
+def get_model(loss="mean_squared_error", optimizer="adam", learning_rate=0.001, metrics = ['mse', 'mae', 'mape'], dropout=0.25, units=[512, 128]):
     print(" ===== Creating L1 Siamese Model =====")
 
     # Define input shape
@@ -110,6 +112,10 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         # Early Stopper to prevent overfitting
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
+        # Model Checkpoint to save the best model
+        filename = bestModelPath.rpartition('.')[0]
+        checkpoint_callback = ModelCheckpoint(filepath=f'{filename}_{epochs}_{dropout}_{batch_size}_{learning_rate}_{optimizer}_{{epoch:02d}}.keras', save_weights_only=False, verbose=1)
+
         print(f"""Testing Parameters:
         Epochs: {epochs}
         Dropout: {dropout}
@@ -125,16 +131,17 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         # Create the model
         model = get_model(loss="mean_squared_error", optimizer=optimizer, learning_rate=learning_rate, metrics=metrics, dropout=dropout, units=units)
         startTime = time.time()
-        history = model.fit(training_set, epochs=epochs, validation_data=validation_set, callbacks=[early_stopping])
+        history = model.fit(training_set, epochs=epochs, validation_data=validation_set, callbacks=[early_stopping, checkpoint_callback])
         totalTime = time.time() - startTime
         print(f"Time taken for the model to run: {time.strftime('%H:%M:%S', time.gmtime(totalTime))}")
 
         # Get the validation loss
         val_loss = min(history.history['val_loss'])
+        val_mse = min(history.history['val_mse'])
 
         # Save the model if lowest validation loss
-        if val_loss < bestModelScore:
-            bestModelScore = val_loss
+        if val_mse < bestModelScore:
+            bestModelScore = val_mse
             model.save(bestModelPath)  # Save the best model
 
         # Save the history for the model
@@ -149,7 +156,7 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         histories.append(information)
 
-        return val_loss
+        return val_mse
 
     # Create the Optuna study
     study = optuna.create_study(direction='minimize')

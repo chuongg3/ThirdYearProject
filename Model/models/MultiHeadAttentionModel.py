@@ -110,7 +110,8 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
         # Model Checkpoint to save the best model
-        checkpoint_callback = ModelCheckpoint(filepath='Transformer_{epochs}_{dropout}_{batch_size}_{learning_rate}_{optimizer}_{head_size}_{num_heads}_{ff_dim}.keras', save_best_only=True, monitor='val_loss', mode='min', save_weights_only=False)
+        filename = bestModelPath.rpartition('.')[0]
+        checkpoint_callback = ModelCheckpoint(filepath=f'{filename}_{epochs}_{dropout}_{batch_size}_{learning_rate}_{optimizer}_{head_size}_{num_heads}_{ff_dim}_{{epoch:02d}}.keras', save_weights_only=False, verbose=1)
 
         print(f"""Testing Parameters:
         Epochs: {epochs}
@@ -135,10 +136,11 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         # Get the validation loss
         val_loss = min(history.history['val_loss'])
+        val_mse = min(history.history['val_mse'])
 
         # Save the model if lowest validation loss
-        if val_loss < bestModelScore:
-            bestModelScore = val_loss
+        if val_mse < bestModelScore:
+            bestModelScore = val_mse
             model.save(bestModelPath)  # Save the best model
 
         # Save the history for the model
@@ -152,7 +154,7 @@ def HyperParameterTraining(DATA_PATH, metrics = ['mse', 'mae', 'mape'], n_trials
 
         histories.append(information)
 
-        return val_loss
+        return val_mse
 
     # Create the Optuna study
     study = optuna.create_study(direction='minimize')

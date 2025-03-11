@@ -12,6 +12,9 @@ tar -C ${BASEDIR}/local -xzf ${FILENAME}
 # Copy TSL file
 cp -r ${BASEDIR}/local/include/external/local_tsl/tsl/ ${BASEDIR}/local/include/tsl/
 
+# Clean up
+rm ${BASE_DIR}/libtensorflow-cpu-linux-x86_64.tar.gz
+
 cd ${BASEDIR}
 # =====================================================
 
@@ -27,32 +30,6 @@ nice ninja
 cd ${BASEDIR}
 # =====================================================
 
-# ================== Install IR2Vec ===================
-git clone https://github.com/IITH-Compilers/IR2Vec.git
-cd IR2Vec
-
-# Apply my changes to IR2Vec
-git apply $BASEDIR/Differentials/DemangledName.diff
-
-# Build IR2Vec
-mkdir build
-cd build
-
-# Set up Eigen build for IR2Vec
-wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
-tar -xvzf eigen-3.3.7.tar.gz
-mkdir eigen-build && cd eigen-build
-cmake ../eigen-3.3.7 && make
-
-cd ../
-
-# Build IR2Vec
-cmake -DLT_LLVM_INSTALL_DIR=/usr/bin/ -DEigen3_DIR=${BASEDIR}/IR2Vec/build/eigen-build/ ..
-make && make install
-
-cd ${BASEDIR}
-# =====================================================
-
 # ================== Install f3m_Exp ==================
 # Convert dropbox URL to direct download URL
 F3M_FILE="f3m-cgo22-artifact.v5.tar.xz"
@@ -61,10 +38,42 @@ wget --content-disposition -O ${F3M_FILE} "https://www.dropbox.com/scl/fi/lu0tzh
 tar -xf ${F3M_FILE}
 
 # Move f3m_exp to the main director
-mv ${BASEDIR}/${F3M_FILE}/f3m_exp/ ${BASEDIR}/f3m_exp/
+mv ${BASEDIR}/f3m-cgo22-artifact.v5/f3m_exp/ ${BASEDIR}/f3m_exp/
 
 # Replace original files with my files
 cp ${BASEDIR}/f3m_exp_files/config.py ${BASEDIR}/f3m_exp/config.py
 cp ${BASEDIR}/f3m_exp_files/flags.py ${BASEDIR}/f3m_exp/flags.py
 cp ${BASEDIR}/f3m_exp_files/Makefile.config ${BASEDIR}/f3m_exp/benchmarks/Makefile.config
+
+# Clean up
+rm -r ${BASEDIR}/f3m-cgo22-artifact.v5
+rm ${BASEDIR}/f3m-cgo22-artifact.v5.tar.xz
+
+cd ${BASEDIR}
+# =====================================================
+
+# ================== Install IR2Vec ===================
+git clone https://github.com/IITH-Compilers/IR2Vec.git
+cd IR2Vec
+
+# Apply my changes to IR2Vec
+git apply $BASEDIR/Differentials/DemangledName.diff
+
+# # Build IR2Vec
+# mkdir build
+# cd build
+
+# # Set up Eigen build for IR2Vec
+# wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
+# tar -xvzf eigen-3.3.7.tar.gz
+# mkdir eigen-build && cd eigen-build
+# cmake ../eigen-3.3.7 && make
+
+# cd ../
+
+# # Build IR2Vec
+# cmake -DLT_LLVM_INSTALL_DIR=/usr/bin/ -DEigen3_DIR=${BASEDIR}/IR2Vec/build/eigen-build/ ..
+# make && make install
+
+cd ${BASEDIR}
 # =====================================================

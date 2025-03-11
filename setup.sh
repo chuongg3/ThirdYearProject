@@ -1,9 +1,10 @@
-!#/bin/bash
+#!/bin/bash
 
 # Get the ThirdYearProject Path
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # ============== Install Tensorflow C API =============
+mkdir ${BASEDIR}/local/
 FILENAME=libtensorflow-cpu-linux-x86_64.tar.gz
 wget -q --no-check-certificate https://storage.googleapis.com/tensorflow/versions/2.17.0/${FILENAME}
 tar -C ${BASEDIR}/local -xzf ${FILENAME}

@@ -10,7 +10,7 @@ wget -q --no-check-certificate https://storage.googleapis.com/tensorflow/version
 tar -C ${BASEDIR}/local -xzf ${FILENAME}
 
 # Copy TSL file
-cp -r ${BASEDIR}/local/include/external/local_tsl/ ${BASEDIR}/local/include/tsl/
+cp -r ${BASEDIR}/local/include/external/local_tsl/tsl/ ${BASEDIR}/local/include/tsl/
 
 cd ${BASEDIR}
 # =====================================================

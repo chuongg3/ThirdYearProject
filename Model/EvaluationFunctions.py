@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 @tf.function
 def evaluate_model(model, test_dataset, sample_limit=1000):
@@ -78,4 +79,43 @@ def PlotDifferenceHistogram(sampled_trues, sampled_predictions, graph_name):
     plt.title(f'{graph_name} Histogram of Differences (Actual - Predicted)')
     plt.xlabel('Difference')
     plt.ylabel('Frequency')
+    plt.show()
+
+def PlotHeatMapScatter(sampled_trues, sampled_predictions, graph_name, method='hist2d'):
+    plt.figure(figsize=(12, 6))
+
+    # Ensure predictions are flattened
+    sampled_predictions = sampled_predictions.flatten()
+
+    # 2D histogram approach
+    if method == 'hist2d':
+        hist = plt.hist2d(sampled_trues, sampled_predictions, bins=50, cmap='viridis', cmin=0, cmax=350)
+        plt.colorbar(label='Count')
+
+    # Hexagonal binning approach
+    elif method == 'hexbin':
+        hb = plt.hexbin(sampled_trues, sampled_predictions, gridsize=500, cmap='viridis', mincnt=None)
+        plt.colorbar(hb, label='Count')
+
+    # Kernel density approach using scatter with color mapping
+    elif method == 'kde':
+        from scipy.stats import gaussian_kde
+
+        # Calculate the point density
+        xy = np.vstack([sampled_trues, sampled_predictions])
+        z = gaussian_kde(xy)(xy)
+
+        # Sort the points by density, so that the densest points are plotted last
+        idx = z.argsort()
+        x, y, z = sampled_trues[idx], sampled_predictions[idx], z[idx]
+
+        sc = plt.scatter(x, y, c=z, s=10, cmap='viridis')
+        plt.colorbar(sc, label='Density')
+
+    # Add reference line
+    plt.plot([0, 1], [0, 1], 'r--')
+
+    plt.title(f'{graph_name} Heat Map of Predictions vs Actual Alignment Scores')
+    plt.xlabel('Actual Alignment Scores')
+    plt.ylabel('Predicted Alignment Scores')
     plt.show()

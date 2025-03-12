@@ -27,9 +27,11 @@ _DEFAULTS = {
 _TECHNIQUES = {
     'baseline': {'TECHNIQUE': 'baseline'},
     'f3m-nw': {'TECHNIQUE': 'f3m', 'ALIGNMENT': 'nw'},
+    'f3m-predict-dotprod-nw': {'TECHNIQUE': 'f3m-predict-dotprod', 'ALIGNMENT': 'nw', 'PredictAlignment':'true'},
+    'f3m-predict-attention-nw': {'TECHNIQUE': 'f3m-predict-attention', 'ALIGNMENT': 'nw', 'PredictAlignment':'true'},
     'f3m-pa': {'TECHNIQUE': 'f3m', 'ALIGNMENT': 'pa'},
-    'f3m-predict-nw': {'TECHNIQUE': 'f3m-predict-alignment', 'ALIGNMENT': 'nw', 'PredictAlignment':'true'},
-    'f3m-predict-pa': {'TECHNIQUE': 'f3m-predict-alignment', 'ALIGNMENT': 'pa', 'PredictAlignment':'true'}
+    'f3m-predict-dotprod-pa': {'TECHNIQUE': 'f3m-predict-dotprod', 'ALIGNMENT': 'pa', 'PredictAlignment':'true'},
+    'f3m-predict-attention-pa': {'TECHNIQUE': 'f3m-predict-attention', 'ALIGNMENT': 'pa', 'PredictAlignment':'true'}
 }
 
 class Flags(object):

@@ -66,7 +66,6 @@ def getDatasetSize(DB_File, condition = ""):
         return row[0]
 
 # Returns a file name without the extension
-# Assuming that all DB_FILE passed through are in the format of "name.db"
 def getFileName(DB_FILE):
     return ".".join(DB_FILE.split(".")[:-1])
 
@@ -257,21 +256,20 @@ def natural_keys(text):
 
 # Loads NPZ files with memory mapping and returns the arrays.
 def load_npz_arrays(file_path, encodings=None, condition=None):
-    # It loads the NPZ file with memory mapping and returns the arrays.
     print(f"[load_npz_arrays] Loading file {file_path} in process id: {os.getpid()}")
     with np.load(file_path, mmap_mode="r") as data:
         if _NEW_DATASET:
             assert encodings is not None
             print("Using new dataset")
-            func1IDs = data["func1IDs"]  # shape: (num_samples,)
-            enc1 = encodings[func1IDs]   # shape: (num_samples, 300)
-            func2IDs = data["func2IDs"]  # shape: (num_samples,)
-            enc2 = encodings[func2IDs]   # shape: (num_samples, 300)
+            func1IDs = data["func1IDs"]
+            enc1 = encodings[func1IDs]
+            func2IDs = data["func2IDs"]
+            enc2 = encodings[func2IDs]
         else:
-            enc1 = data["Encoding1"]  # shape: (num_samples, 300)
-            enc2 = data["Encoding2"]  # shape: (num_samples, 300)
+            enc1 = data["Encoding1"]
+            enc2 = data["Encoding2"]
 
-        labels = data["AlignmentScore"]  # shape: (num_samples,)
+        labels = data["AlignmentScore"]
     if condition is None:
         return enc1, enc2, labels
     else:

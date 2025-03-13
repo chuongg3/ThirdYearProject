@@ -13,29 +13,27 @@ def evaluate_model(model, test_dataset, sample_limit=1000):
     mae_metric = tf.keras.metrics.MeanAbsoluteError()
     mape_metric = tf.keras.metrics.MeanAbsolutePercentageError()
 
-    # We'll use TensorArray to collect samples without growing a Python list in a loop.
-    # Here, we preallocate space for a maximum of 'sample_limit' batches (or you can decide on a max number of samples).
+    # Defining sample storage
     sample_preds = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     sample_trues = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     sample_count = tf.constant(0)
 
     # Iterate over the dataset
     for inputs, true_labels in test_dataset:
-        # Compute predictions (make sure model is defined in your context)
+        # Compute predictions
         preds = model(inputs, training=False)
         # Update metric state
         mse_metric.update_state(true_labels, preds)
         mae_metric.update_state(true_labels, preds)
         mape_metric.update_state(true_labels, preds)
 
-        # Collect sample predictions if we haven't reached our limit.
-        # For example, collect the first batch from each iteration until reaching sample_limit batches.
+        # Collect sample predictions if limit not reached
         if sample_count < sample_limit:
             sample_preds = sample_preds.write(sample_count, preds)
             sample_trues = sample_trues.write(sample_count, true_labels)
             sample_count += 1
 
-    # Gather metric results and convert collected samples to tensors.
+    # Gather metric results
     mse_value = mse_metric.result()
     mae_value = mae_metric.result()
     mape_value = mape_metric.result()

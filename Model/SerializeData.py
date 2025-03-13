@@ -40,7 +40,7 @@ def main():
     basename = DB_FILE.rpartition('.')[0]
     print(f"File name without extension: {basename}")
 
-    # Open connection (main process reads sequentially)
+    # Open connection
     conn = LoadData.connectToDB(DB_FILE)
 
     # Load all benchmark and function information from the db
@@ -70,7 +70,6 @@ def main():
     encodings_arr = np.array(function_encoding, dtype=np.float32)
 
     # Store all non-chunk information
-
     np.save(f'{basename}_encodings.npy', encodings_arr)
     with open(f'{basename}_function_list.txt', 'w', encoding='utf8') as fout:
         for benchmarkID, functionID in function_list:
@@ -102,7 +101,7 @@ def main():
         if pair_idx == CHUNK_SIZE:
             serialize_chunk(basename, chunk_idx, func1_arr, func2_arr, scores_arr)
 
-            # initialise the next chunk
+            # Initialise the next chunk
             func1_arr = np.empty(CHUNK_SIZE, dtype=np.int32)
             func2_arr = np.empty(CHUNK_SIZE, dtype=np.int32)
             scores_arr = np.empty(CHUNK_SIZE, dtype=np.float32)
@@ -110,7 +109,7 @@ def main():
             chunk_idx += 1
 
     if pair_idx > 0:
-        # serialise the last incomplete chunk
+        # Serialise the last incomplete chunk
         func1_arr.resize(pair_idx)
         func2_arr.resize(pair_idx)
         scores_arr.resize(pair_idx)

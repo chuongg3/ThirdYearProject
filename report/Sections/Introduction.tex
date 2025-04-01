@@ -1,0 +1,79 @@
+\chapter{Introduction - 10\%}
+\label{cha:intro}
+% Talk about word2vec and then do literature review
+
+Get the reader up to speed on your project - Dont leave the reader guessing
+\section{Motivation}
+It is hard to imagine what the benefit of minimising code size in the current technological environment where many developers de-prioritize code size in exchange for features and quality due to the abundance of memory and processing power. Moore's law which states that the number of transistors on an integrated circuit doubles every two years, has held true for a long time. With the growth of such transistors
+% Research about moore's law and all that
+
+However, in the world or embedded systems, code size is still a major concern, where both memory and computation power are severely limited. The world is becoming more electrified, there will be a lot of embedded systems around us like cameras and whatever. The ability to generate smaller binaries can additionally relieve the stress on hardware specifications needed to host embedded software, decreasing costs as well as e-waste once these devices reach their end-of-life.
+
+Additionally, for the mobile sector, smaller binaries can bring along many benefits. Speeding up loading times is important as it makes the phone feel snappier in the user's hand, making them happy and all that bs, potentially extending the lifecycle of the phone. Additionnally, with most services requiring or offering their own applications to interact with, the size of binaries can affect use's willingness to make use of the application due to the amount of time needed to download the application. Especially when mobile data is unstable in building or in certain areas and downloads are usually only invoked based on the user's instantaneous needs.
+
+Additionally, mobile OS vendors will limit the size of binaries that are allowed to be downloaded on mobile data. This is to prevent additional costs to users as well as limit the time it will take for users to wait. If an application's binary size surpasses the threshold to download over mobile data, the number of downloads decreases. Users tend to install applications when they need it, but if it is made diffcult for the users, then they will tend to a different solution. \cite{UberBinarySize}
+
+Smaller binaries may results in improved performance, since a larger percentage of a small binary is able to fit onto cache, compared to a larger binary. Therefore there will be less cache misses, leading to less system memory access, improving performance. As possibly battery life?
+
+Reducing code size has been a big focus in compilers for a long time and an area of research focus. Small binaries are a necessity for embedded systems with limited storage and memory. 
+
+One approach to reduce code size is to reduce code redundancy by merging functions which are similar to each other. Identifying function pairs which are similar to each other which produces a profitable merged function is a large area of research at the moment.
+
+When merging functions, there are many things to consider when merging them, as merging two arbitrary functions may introduce more instructions, e.g. Branches, making the merge unprofitable.
+
+
+\begin{itemize}
+    \item LLVM is a compiler and toolchain system used
+    \item LLVM relies on different passes during compilation to convert the source language into the target language
+    \item LLVM compilation has three main stages
+    \begin{itemize}
+        \item Optimisation and Conversion of Source Language to LLVM IR
+        \item LLVM IR Optimisation
+        \item LLVM IR to Target Language (Conversion and Optimisation)
+    \end{itemize}
+    \item LLVM IR is the intermediate representation used by the system, allowing the porting from different source language and porting to different targets as easy as possible. (Show an example graph and explain why this simplifies this) - SHOW WHY LLVM IR is important
+    \item This project focuses on merging LLVM IR functions, to remove redundant code, decreasing binary sizes.
+    \item There is currently a heuristic version of the project (provide the link to paper or repo), but a very big issue is that the complexity is exponential with regards to the number of functions.
+    \item This is caused by the heuristic algorithm having to calculate a certain score for every possible function pair combination, and having to do some operation to calculate the profitability of merging the function.
+    \item If it is not profitable to merge the function, the system will ignore it.
+\end{itemize}
+
+
+\section{Aims}
+Project Page
+\begin{itemize}
+    \item Try merging millions of different function pairs and measure the effect on code size
+    \item Use machine learning to learn a code representation that is useful for merging decisions, i.e. functions that merge well have similar representations
+    \item Modify FMSA to only merge functions that are predicted to merge well.
+\end{itemize}
+Current
+\begin{itemize}
+    \item Collect data from the various benchmarks
+    \item Design a ML model which is able to predict the alignment score of two functions given their encodings
+    \item Using a ML model to decrease the amount of time taken to calculate the alignment score
+\end{itemize}
+
+
+This project can be broken down into three main objectives/phases. Firstly, it is to collect the necessary data to be able to learn from, followed by developing ML models which would be good at predicting the similarity or profitiability of merging two given functions. Finally, the model should then be incoorporated into LLVM to make merging decisions when running the compiler on benchmarks.
+
+THe main aim of this project is to try and utilise machine learning to predict the profitability of merging two functions in LLVM IR rather than using heuristics, to try and identify more opportunities where the merging is profitable.
+
+\subsection{Data Collection}
+During this process, it is necessary to identify the right source of information which is crucial to making the right decisions on whether functions should be merged or not. This process will involve running function merging on multiple benchmarks and collecting the information needed and managing the sheer amount of data generated.
+
+\subsection{Model Design}
+Using the data collected from the previous step, we have to design a model architecture/structure which is good at predicting the values we would like through experimentation on a subset of the data.
+
+\subsection{Integration}
+The model should then be integrated into the function merging pipeline in the LLVM codebase and tested on benchmarks to see if there are any benefits/losses using this process. This will involve learning how function merging works and integrating the model trained on Python into the C++ codebase.
+
+\subsection{Objective}
+Analyse functions that are actually good for merging
+Compare the best model structures for prediction
+Feasibility of using ML for this goals
+
+Outperform previous approaches
+That ML is not the main goal in this situation, investigate whether deep learning can make func merging that is better
+
+\section{Outline}
+In this paper, we will discus h

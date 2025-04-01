@@ -1,0 +1,205 @@
+@INPROCEEDINGS{UberBinarySize,
+  author={Chabbi, Milind and Lin, Jin and Barik, Raj},
+  booktitle={2021 IEEE/ACM International Symposium on Code Generation and Optimization (CGO)}, 
+  title={An Experience with Code-Size Optimization for Production iOS Mobile Applications}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={363-377},
+  keywords={Pipelines;Production;Software;Libraries;Mobile applications;High level languages;Optimization;code-size;machine outlining;iOS;swift;intermodule optimization;whole-program optimization},
+  doi={10.1109/CGO51591.2021.9370306}
+}
+
+@inproceedings{HyFM:FunctionMergingForFree,
+author = {Rocha, Rodrigo C. O. and Petoumenos, Pavlos and Wang, Zheng and Cole, Murray and Hazelwood, Kim and Leather, Hugh},
+title = {HyFM: function merging for free},
+year = {2021},
+isbn = {9781450384728},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3461648.3463852},
+doi = {10.1145/3461648.3463852},
+abstract = {Function merging is an important optimization for reducing code size. It merges multiple functions into a single one, eliminating duplicate code among them. The existing state-of-the-art relies on a well-known sequence alignment algorithm to identify duplicate code across whole functions. However, this algorithm is quadratic in time and space on the number of instructions. This leads to very high time overheads and prohibitive levels of memory usage even for medium-sized benchmarks. For larger programs, it becomes impractical. This is made worse by an overly eager merging approach. All selected pairs of functions will be merged. Only then will this approach estimate the potential benefit from merging and decide whether to replace the original functions with the merged one. Given that most pairs are unprofitable, a significant amount of time is wasted producing merged functions that are simply thrown away. In this paper, we propose HyFM, a novel function merging technique that delivers similar levels of code size reduction for significantly lower time overhead and memory usage. Unlike the state-of-the-art, our alignment strategy works at the block level. Since basic blocks are usually much shorter than functions, even a quadratic alignment is acceptable. However, we also propose a linear algorithm for aligning blocks of the same size at a much lower cost. We extend this strategy with a multi-tier profitability analysis that bails out early from unprofitable merging attempts. By aligning individual pairs of blocks, we are able to decide their alignment’s profitability separately and before actually generating code. Experimental results on SPEC 2006 and 2017 show that HyFM needs orders of magnitude less memory, using up to 48 MB or 5.6 MB, depending on the variant used, while the state-of-the-art requires 32 GB in the worst case. HyFM also runs over 4.5\texttimes{}\texttimes{} faster, while still achieving comparable code size reduction. Combined with the speedup of later compilation stages due to the reduced number of functions, HyFM contributes to a reduced end-to-end compilation time.},
+booktitle = {Proceedings of the 22nd ACM SIGPLAN/SIGBED International Conference on Languages, Compilers, and Tools for Embedded Systems},
+pages = {110–121},
+numpages = {12},
+keywords = {Link-Time Optimization, LLVM, Interprocedural Optimization, Function Merging, Code-Size Reduction},
+location = {Virtual, Canada},
+series = {LCTES 2021}
+}
+
+
+@INPROCEEDINGS{F3M:FastFocusedFunctionMerging,
+  author={Stirling, Sean and Rodrigo C. O., Rocha and Hazelwood, Kim and Leather, Hugh and O’Boyle, Michael and Petoumenos, Pavlos},
+  booktitle={2022 IEEE/ACM International Symposium on Code Generation and Optimization (CGO)}, 
+  title={F3M: Fast Focused Function Merging}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={242-253},
+  keywords={Measurement;Codes;Correlation;Profitability;Merging;Termination of employment;Focusing;Code-Size Reduction;Function Merging;LLVM;Compiler Optimization},
+  doi={10.1109/CGO53902.2022.9741269}
+}
+
+@misc{LLVMMergeFunctionsPass,
+	author = {},
+	title = {{M}erge{F}unctions pass, how it works \&#x2014; {L}{L}{V}{M} 21.0.0git documentation --- llvm.org},
+	howpublished = {\url{https://llvm.org/docs/MergeFunctions.html}},
+	year = {},
+	note = {[Accessed 18-03-2025]},
+}
+
+@MISC{LLVMFuncMergSrc,
+  title        = "{LLVM}: {Lib/transforms/IPO/MergeFunctions.Cpp} source file",
+  booktitle    = "Llvm.org",
+  howpublished = "\url{https://llvm.org/doxygen/MergeFunctions_8cpp_source.html}",
+  note         = "Accessed: 2025-3-17",
+  language     = "en"
+}
+
+@misc{LLVMBasicBlockDef,
+	author = {},
+	title = {{L}{L}{V}{M}: llvm::{B}asic{B}lock {C}lass {R}eference --- llvm.org},
+	howpublished = {\url{https://llvm.org/doxygen/classllvm_1_1BasicBlock.html}},
+	year = {},
+	note = {[Accessed 18-03-2025]},
+}
+
+@INPROCEEDINGS{FunctionMergingSequenceAlignment,
+  author={Rocha, Rodrigo C. O. and Petoumenos, Pavlos and Wang, Zheng and Cole, Murray and Leather, Hugh},
+  booktitle={2019 IEEE/ACM International Symposium on Code Generation and Optimization (CGO)}, 
+  title={Function Merging by Sequence Alignment}, 
+  year={2019},
+  volume={},
+  number={},
+  pages={149-163},
+  keywords={Merging;Production;Optimization;Benchmark testing;Bioinformatics;Performance evaluation;C++ languages;Code Size;Function Merging;IPO;LTO},
+  doi={10.1109/CGO.2019.8661174}
+}
+
+
+@article{NeedlemanWunschAlgorithm,
+title = {A general method applicable to the search for similarities in the amino acid sequence of two proteins},
+journal = {Journal of Molecular Biology},
+volume = {48},
+number = {3},
+pages = {443-453},
+year = {1970},
+issn = {0022-2836},
+doi = {https://doi.org/10.1016/0022-2836(70)90057-4},
+url = {https://www.sciencedirect.com/science/article/pii/0022283670900574},
+author = {Saul B. Needleman and Christian D. Wunsch},
+abstract = {A computer adaptable method for finding similarities in the amino acid sequences of two proteins has been developed. From these findings it is possible to determine whether significant homology exists between the proteins. This information is used to trace their possible evolutionary development. The maximum match is a number dependent upon the similarity of the sequences. One of its definitions is the largest number of amino acids of one protein that can be matched with those of a second protein allowing for all possible interruptions in either of the sequences. While the interruptions give rise to a very large number of comparisons, the method efficiently excludes from consideration those comparisons that cannot contribute to the maximum match. Comparisons are made from the smallest unit of significance, a pair of amino acids, one from each protein. All possible pairs are represented by a two-dimensional array, and all possible comparisons are represented by pathways through the array. For this maximum match only certain of the possible pathways must be evaluated. A numerical value, one in this case, is assigned to every cell in the array representing like amino acids. The maximum match is the largest number that would result from summing the cell values of every pathway.}
+}
+
+@article{BayesianOptimisation,
+title = {Hyperparameter Optimization for Machine Learning Models Based on Bayesian Optimization},
+journal = {Journal of Electronic Science and Technology},
+volume = {17},
+number = {1},
+pages = {26-40},
+year = {2019},
+issn = {1674-862X},
+doi = {https://doi.org/10.11989/JEST.1674-862X.80904120},
+url = {https://www.sciencedirect.com/science/article/pii/S1674862X19300047},
+author = {Jia Wu and Xiu-Yun Chen and Hao Zhang and Li-Dong Xiong and Hang Lei and Si-Hao Deng},
+keywords = {Bayesian optimization, Gaussian process, hyperparameter optimization, machine learning},
+abstract = {Hyperparameters are important for machine learning algorithms since they directly control the behaviors of training algorithms and have a significant effect on the performance of machine learning models. Several techniques have been developed and successfully applied for certain application domains. However, this work demands professional knowledge and expert experience. And sometimes it has to resort to the brute-force search. Therefore, if an efficient hyperparameter optimization algorithm can be developed to optimize any given machine learning method, it will greatly improve the efficiency of machine learning. In this paper, we consider building the relationship between the performance of the machine learning models and their hyperparameters by Gaussian processes. In this way, the hyperparameter tuning problem can be abstracted as an optimization problem and Bayesian optimization is used to solve the problem. Bayesian optimization is based on the Bayesian theorem. It sets a prior over the optimization function and gathers the information from the previous sample to update the posterior of the optimization function. A utility function selects the next sample point to maximize the optimization function. Several experiments were conducted on standard test datasets. Experiment results show that the proposed method can find the best hyperparameters for the widely used machine learning models, such as the random forest algorithm and the neural networks, even multi-grained cascade forest under the consideration of time cost.}
+}
+
+@article{MLParadigms,
+author = {Shyam, Radhey and Chakraborty, Riya},
+year = {2021},
+month = {09},
+pages = {2021},
+title = {Machine Learning and Its Dominant Paradigms},
+volume = {8},
+doi = {10.37591/JoARB}
+}
+
+@INPROCEEDINGS{ImbalancedDataset,
+  author={Pereira, Jeanne and Saraiva, Filipe},
+  booktitle={2020 IEEE Congress on Evolutionary Computation (CEC)}, 
+  title={A Comparative Analysis of Unbalanced Data Handling Techniques for Machine Learning Algorithms to Electricity Theft Detection}, 
+  year={2020},
+  volume={},
+  number={},
+  pages={1-8},
+  keywords={Machine learning;Support vector machines;Measurement;Radio frequency;Data handling;Training;Feature extraction;Classification problem;Electricity theft;Unbalanced data;Machine Learning},
+  doi={10.1109/CEC48606.2020.9185822}}
+
+
+@Inbook{LearningDefinition1,
+author="Lampropoulos, Aristomenis S.
+and Tsihrintzis, George A.",
+title="The Learning Problem",
+bookTitle="Machine Learning Paradigms: Applications in Recommender Systems",
+year="2015",
+publisher="Springer International Publishing",
+address="Cham",
+pages="31--61",
+abstract="In general, Learning can be defined as the modification of a behavior tendency according to experiences which have been acquired. Thus, Learning embeds distinctive attributes of intelligent behavior. Machine Learning is the study of how to develop algorithms, computer applications, and systems that have the ability to learn and, thus, improve through experience their performance at some tasks. This chapter presents the formalization of the Machine Learning Problem.",
+isbn="978-3-319-19135-5",
+doi="10.1007/978-3-319-19135-5_3",
+url="https://doi.org/10.1007/978-3-319-19135-5_3"
+}
+
+@book{LearningDefinition2,
+  title={Machine learning for audio, image and video analysis: theory and applications},
+  author={Camastra, Francesco and Vinciarelli, Alessandro},
+  year={2015},
+  publisher={Springer}
+}
+
+
+
+@article{SupervisedLearningAndTrainingProcess,
+  title = {Machine Learning from Theory to Algorithms: An Overview},
+  volume = {1142},
+  ISSN = {1742-6596},
+  url = {http://dx.doi.org/10.1088/1742-6596/1142/1/012012},
+  DOI = {10.1088/1742-6596/1142/1/012012},
+  journal = {Journal of Physics: Conference Series},
+  publisher = {IOP Publishing},
+  author = {Alzubi,  Jafar and Nayyar,  Anand and Kumar,  Akshi},
+  year = {2018},
+  month = nov,
+  pages = {012012}
+}
+
+@book{DeepLearningGoodfellow,
+  title={Deep learning},
+  author={Bengio, Yoshua and Goodfellow, Ian and Courville, Aaron and others},
+  volume={1},
+  year={2017},
+  publisher={MIT press Cambridge, MA, USA}
+}
+
+
+@misc{Word2Vec,
+      title={Efficient Estimation of Word Representations in Vector Space}, 
+      author={Tomas Mikolov and Kai Chen and Greg Corrado and Jeffrey Dean},
+      year={2013},
+      eprint={1301.3781},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/1301.3781}, 
+}
+
+@inproceedings{GloVe,
+    title = "{G}lo{V}e: Global Vectors for Word Representation",
+    author = "Pennington, Jeffrey  and
+      Socher, Richard  and
+      Manning, Christopher",
+    editor = "Moschitti, Alessandro  and
+      Pang, Bo  and
+      Daelemans, Walter",
+    booktitle = "Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing ({EMNLP})",
+    month = oct,
+    year = "2014",
+    address = "Doha, Qatar",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/D14-1162/",
+    doi = "10.3115/v1/D14-1162",
+    pages = "1532--1543"
+}

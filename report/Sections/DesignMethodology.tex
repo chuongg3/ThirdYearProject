@@ -1,0 +1,77 @@
+\chapter{Design \& Methodology - 25\%}
+
+\begin{itemize}
+    \item 
+\end{itemize}
+
+
+\section{Data Collection}
+include a schema of the database?
+ - How data is organised\\
+Why was SQLite3 chosen instead of PostgreSQL or other solutions
+
+\subsection{Function Details}
+\begin{itemize}
+ \item Automated scripts to run the data collection, allowing for multiple data collection to run at any time, speeding it up
+ \item FunctionMerging code changes are stored in a .diff file
+ \item Explain how to use the script findBenchmarks.sh?
+\end{itemize}
+
+
+\subsection{Function Encodings}
+Talk about how IR2Vec was not working with LLVM repo, most likely because of the difference in versioning, so had to use the binary to generate function level encodings into a text file, which then had to be processed by script and placed into the database.
+
+The difficulty is that I had to look into the IR2Vec source code and make it use the mangled name instead of the demangled name, because the original LLVM code was using the mangled one, and it was the only way to match the encoding to the function.
+
+\begin{itemize}
+ \item IR2Vec is used, which uses LLVM 18.1.8
+ \item Explain how to use the script GetEncoding.py.
+ \item Choosing to store encodings as BLOB object instead of string so less time used to process data
+\end{itemize}
+
+
+\subsection{Merging Data}
+ - Explain how the script MergeDB.py works, how it merges different databases
+
+Had to exclude @0 and @1 function from the linux dataset, because there was no encoding?
+
+\section{Model}
+ - Loading data efficiently into the model
+ - Created a pipeline to run different neural network models quickly and efficiently
+
+\subsection{Loading Data}
+ - Efficiently Loading Data
+ - Making permanent copies of Train, Validation and Testing dataset so that the steps are repeatable with the same data
+ - Undersampling of zero alignment score samples to match the number of non-zero alignment samples
+
+\subsection{Dealing with Unbalanced Data}
+
+\subsubsection{Serializing Data}
+Make the model run faster by serializing the data before hand and saving it using numpy.savez\_compress().
+
+Select a suitable chunk size, if not the whole system will run indefinitely.
+Makes use of multiprocessing in python3
+Each worker selects chunks of data from the database and processes the dta by deserrialising the data and then converting each chunk into a 2D ND Array, then placing it onto a queue.
+
+In the main part of the script, the 2D NDArrays are merged together and checked how many rows was processed. 
+
+Each worker checks if there is more than 20\% of the available memory before retrieving more information, if there isnt enough, it will sleep. 
+
+Now if there are the chunk size is too big, the script will not write the main chunk into files yet, and the workers will keep on waiting for the script to write the file to free up memory. This will lead to an infinite loop
+
+\subsection{Baseline}
+ - Use Dot product on the two vectors
+ - Cosine Similarity
+ - Normalised Euclidean distance
+
+\subsection{L1 Distance Siamese Model}
+ 
+\subsection{Dot Product/Cosine Similarity Siamese Model}
+Use a Siamese model to train it to produce embeddings which will perform well when a dot product is applied to it
+
+Idea: Dense layer expands the 3000 dimensiona input into 512 to try to capture the more complex relationships between the two thing before compressing it down to 256, followed by 128 before checking the dot product between them.
+
+
+
+
+Does not reuse merged functions - Do not have the encodings for it

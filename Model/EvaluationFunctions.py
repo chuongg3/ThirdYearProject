@@ -67,6 +67,7 @@ def PlotTrueVsPredicted(sampled_trues, sampled_predictions, graph_name):
     plt.title(f'{graph_name} Predictions vs Actual Alignment Scores')
     plt.xlabel('Actual Alignment Scores')
     plt.ylabel('Predicted Alignment Scores')
+    # plt.savefig(f'{graph_name} Predictions vs Actual Alignment Scores', format="pdf", bbox_inches="tight")
     plt.show()
 
 def PlotDifferenceHistogram(sampled_trues, sampled_predictions, graph_name):
@@ -77,6 +78,7 @@ def PlotDifferenceHistogram(sampled_trues, sampled_predictions, graph_name):
     plt.title(f'{graph_name} Histogram of Differences (Actual - Predicted)')
     plt.xlabel('Difference')
     plt.ylabel('Frequency')
+    # plt.savefig(f'{graph_name} Histogram of Differences (Actual - Predicted)', format="pdf", bbox_inches="tight")
     plt.show()
 
 def PlotHeatMapScatter(sampled_trues, sampled_predictions, graph_name, method='hist2d'):
@@ -87,8 +89,10 @@ def PlotHeatMapScatter(sampled_trues, sampled_predictions, graph_name, method='h
 
     # 2D histogram approach
     if method == 'hist2d':
-        hist = plt.hist2d(sampled_trues, sampled_predictions, bins=50, cmap='viridis', cmin=0, cmax=350)
-        plt.colorbar(label='Count')
+        from matplotlib.colors import LogNorm
+        hist = plt.hist2d(sampled_trues, sampled_predictions, bins=100, cmap='viridis',
+                         norm=LogNorm(), range=[[0, 1], [0, 1]])
+        plt.colorbar(label='Count (log scale)')
 
     # Hexagonal binning approach
     elif method == 'hexbin':
@@ -111,9 +115,10 @@ def PlotHeatMapScatter(sampled_trues, sampled_predictions, graph_name, method='h
         plt.colorbar(sc, label='Density')
 
     # Add reference line
-    plt.plot([0, 1], [0, 1], 'r--')
+    plt.plot([0, 1], [0, 1], 'r--', linewidth=0.75)
 
     plt.title(f'{graph_name} Heat Map of Predictions vs Actual Alignment Scores')
     plt.xlabel('Actual Alignment Scores')
     plt.ylabel('Predicted Alignment Scores')
+    plt.savefig(f'{graph_name}_Heatmap.pdf', format="pdf", bbox_inches="tight")
     plt.show()

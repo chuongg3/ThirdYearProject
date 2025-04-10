@@ -5,3 +5,8 @@ Two methods of evaluation for now
     \item Is the function with the highest alignment score the same as the true value?
     \item Graphing the predicted alignment score vs the true score, ideally data should be staying along the axis
 \end{itemize}
+
+
+\section{ML Models}
+\subsection{Dot Product ML Model}
+Dot product did better than cosine similarity probably because distance does matter for this. For example, given function with instructions a, b, c, d, e and a function with instructions a, e. While the functions can be merged together well, the alignment score is still low.

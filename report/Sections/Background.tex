@@ -14,6 +14,13 @@ Function merging is a powerful code optimisation technique that reduces redundan
 
 Typically, the process begins with analysing pairs or groups of functions to identify regions of similarity. After identifying these similarities, a merged function is constructed that uses parameters to determine which behaviour should be executed. This unified function incorporates decision points—often implemented as conditional branches—that select the appropriate logic path based on the input parameters. In doing so, the merged function maintains the distinct functionality of the original functions while eliminating redundant code.
 
+\section{LLVM}
+\subsection{LLVM IR} \label{LLVM:IR}
+IR is SSA - Single static assignment or whatever
+\subsection{LLVM Bitcode} \label{LLVM:Bitcode}
+
+
+
 \section{Compiler}
 Compilers serve as translators that convert high-level programming languages into machine-executable code. Their goal is to produce the most efficient executable code where possible while still preserving semantic correctness. Modern compilers work by performing numerous analyses and transformations to improve the code quality.
 
@@ -43,7 +50,7 @@ The existing approach is inherently conservative, primarily targeting functions 
 
 These limitations establish a clear opportunity for more sophisticated merging decision mechanisms that can recognise non-obvious structural similarities and better predict optimisation benefits.
 
-\subsection{Function Merging by Sequence Alignment}
+\subsection{Function Merging by Sequence Alignment (FMSA)}
 Rocha et al. introduced a novel technique for code size reduction that adapts sequence alignment algorithms from bioinformatics to merge similar functions \cite{FunctionMergingSequenceAlignment}. This technique attempts to address a limitation of previous methods, either merging almost identical functions or algorithms which struggled to identify feasible functions for merging.
 
 This approach consists of three stages, function linearisation, sequence alignment and code generation. During linearisation, the functions are transformed by traversing the function's blocks in the control-flow graph (CFG). The basic blocks and labels are then expanded where necessary to produce the linearised function consisting of instructions. 
@@ -77,6 +84,7 @@ $$\frac{No.\ of\ Green\ Nodes}{Total\ No.\ of\ Green\ and\ Red\ Nodes}=\frac{14}
 
 Given that this metric is a ratio, this metric will be a continuous value in the range of [0, 1] inclusive, where 0 represents a completely dissimilar function pair and 1 representing a structurally identical function pair.
 
+
 % \subsection{HyFM}
 % HyFM is a notable function merging algorithm developed to solve the issue of the time needed to compiler code. Previous advanced function merging implementations were quadratic in complexity with regards to the number of functions. On top of that, the implementations were too keen on merging all selected functions, where most of the time the merged functions were unprofitable.\cite{HyFM:FunctionMergingForFree}
 
@@ -96,10 +104,26 @@ Given that this metric is a ratio, this metric will be a continuous value in the
 % \subsection{Word2Vec}
 % \subsection{IR2Vec}
 
+\subsection{HyFM}
+HyFM tries to tackle the inefficiencies of the previous state-of-the-art (SOTA) by introducing multiple optimisations \cite{HyFM:FunctionMergingForFree}. 
+
+\subsubsection{Basic-Block Granularity} \label{HyFM:BasicBlockGranularity}
+First, HyFM works at the basic-block level instead of function level. While the complexity is still $O(n^2)$ for the Needleman-Wunsch (NW)algorithm, $n$ in the previous SOTA refers to the number of instructions in functions whereas $n$ in HyFM refers to the number of instructions in basic blocks, which is considerably smaller, resulting in a dramatic memory reduction.
+
+\subsection{Fingerprint} \label{HyFM:FingerprintDistance}
+Before performing alignment, HyFM uses fingerprints to efficiently identify similar blocks. Each fingerprint is a fixed-size vector representing the frequency count of each opcode in a block. HyFM pre-computes fingerprints for all basic blocks and uses the Manhattan distance between these fingerprints to pair similar blocks from different functions. This lightweight filtering mechanism helps HyFM quickly focus on promising block pairs before applying the more expensive alignment analysis.
+
+
+\subsubsection{Pairwise-Alignment (PA)} \label{HyFM:PairwiseAlignment}
+Additionally, HyFM introduces a new linear-complexity pairwise alignment (PA) strategy that only aligns instructions in corresponding positions, with instructions matching only if they have the same opcode. It has been identified that most basic blocks that would be profitably merged have highly similar structure, making this simpler approach effective for real-world code. Finally, HyFM implements a multi-tiered profitability analysis, allowing it to bail out early from unprofitable and expensive merging attempts. This prevents wasting resources on generating merged code that would ultimately be discarded, contributing to HyFM's speedup compared to the previous SOTA.
+
 \subsection{F3M: Fast Focused Function Merging}
 This project is built on the current state-of-the-art function merging, Fast Focused Function Merging's (F3M) infrastructure. F3M represents the current state-of-the-art in function merging technology to address critical inefficiencies that previously made function merging impractical for large-scale applications. While its predecessor, HyFM, improved function merging by operating at the basic block level \cite{HyFM:FunctionMergingForFree}, F3M introduces fundamental innovations that dramatically reduce compilation time while maintaining or improving code size reduction.
 
-The technique introduces two key innovations. First, F3M employs MinHash-based fingerprinting that better captures the semantic similarity between functions. Each instruction is encoded as a 32-bit integer representing four critical properties: opcode, result type, number of operands, and operand types. These encoded instructions are then grouped into overlapping "shingles" (pairs of consecutive instructions).  Multiple hash functions are then applied to each shingle, with only the minimum hash value across all shingles from each function retained, producing a fixed-length fingerprint vector.
+The technique introduces two key innovations. First, F3M employs MinHash-based fingerprinting that better captures the semantic similarity between functions. 
+
+\subsubsection{Min-Hash Fingerprinting} \label{METRIC: MinHashFingerprint}
+Each instruction is encoded as a 32-bit integer representing four critical properties: opcode, result type, number of operands, and operand types. These encoded instructions are then grouped into overlapping "shingles" (pairs of consecutive instructions).  Multiple hash functions are then applied to each shingle, with only the minimum hash value across all shingles from each function retained, producing a fixed-length fingerprint vector.
 
 \begin{figure}[h!]
 \centering
@@ -107,7 +131,15 @@ The technique introduces two key innovations. First, F3M employs MinHash-based f
 \caption{The MinHash algorithm: Textual documents are broken up into overlapping subsequences; Each subsequence is hashed with k different hash functions; For each function, the smallest hash is saved creating a fingerprint of k entries. In this example, two functions differ in only a couple extra instructions inside F2. For F2’s fingerprint, this creates shingles and hashes with no matches in F1, representing the slight difference between them. Figure and caption taken from  \cite{F3M:FastFocusedFunctionMerging}.}\label{fig:testsvg}
 \end{figure}
 
+\subsubsection{Comparing MinHash Fingerprints} \label{METRIC:MinHashDistance}
+To compare the MinHash fingerprints, the Jaccard Index between two fingerprints is calculated, representing the likelihood of matching instruction subsequences. For two fingerprints A and B, the index is calculated by finding the ratio of identical pairwise hash values compared to the total number of hashes ($k$):
 
+$$J(A, B) = \frac{|A\cap B|}{k}$$
+
+The Jaccard distance is then computed as: 
+$$d(A, B) = 1 - J(A, B)$$
+
+\subsubsection{Locality Sensitive Hashing (LSH)}
 Second, F3M implements Locality Sensitive Hashing (LSH) to drastically reduce the search complexity from quadratic to near-linear. Rather than comparing every function against every other function, LSH divides each fingerprint into multiple bands (groups of hash values) and then maps each band to buckets in a hashmap. Only functions that share at least one bucket are considered for detailed similarity analysis, cutting down the amount of similarity analysis needed to be done.
 
 % \begin{figure}[tbh!]
@@ -119,7 +151,12 @@ Second, F3M implements Locality Sensitive Hashing (LSH) to drastically reduce th
 % their bands they will be compared during candidate lookup \cite{F3M:FastFocusedFunctionMerging}.}\label{fig:testsvg}
 % \end{figure}
 
+\todo {INCLUDE SECTION/IMAGE ON HOW THE FUNCTIONS GET MERGED}
+
+
 F3M was able to reduce the code size by a further $6\%$ on average while being able to reduce the compile time by $1.8\times$ on average across a wide range of benchmarks. Additionally, this shows the importance of the when-to-merge heuristics on the performance. Although F3M performs very well, especially for the amount of time needed to compile, the model is still very dependent on handcrafted heuristics that use fixed encoding schemes and statically determined parameters. These preset rules cannot adapt to different code patterns or contexts, and may not recognise all the patterns which indicate a suitable match.
+
+
 
 \section{Machine Learning} \label{ML}
 Machine learning (ML) offers an alternative by shifting from explicitly programmed rules to data-driven decision models. A machine learning model is a mathematical model with parameters that is tuned using data. The fundamental advantage of ML-based approaches lies in their ability to discover and leverage intricate patterns across multiple dimensions of code structure and behaviour.
@@ -310,7 +347,7 @@ There are two variants of dropout, the standard dropout which applies the scalin
 
 Typical choices for the dropout rate $p$ ranges from 0.2 to 0.5, although these values should be treated as hyperparameters and tuned for each task \cite{DropoutPaper}.
 
-\subsubsection{Multi-Headed Attention Layers}
+\subsubsection{Multi-Headed Attention Layers} \label{ML:AttentionMechanism}
 Attention layers allow a neural network to focus on the most important feature for the current task. Not all parts of the input contribute equally to solving a problem, by learning which elements require more attention, the network can make more informed decisions. 
 
 The attention mechanism takes in two inputs, the first input will attend to the second. There are two variants of attentions, \textbf{self-attention} where both inputs are the same so the sequence is attending to itself, or \textbf{cross-attention} where both inputs are different.
@@ -327,7 +364,7 @@ Despite its effectiveness, attention and multi-headed attention models come with
 
 
 
-\subsection{Siamese Neural Network}
+\subsection{Siamese Neural Network} \label{ML:SiameseNetwork}
 Siamese neural networks, named after Siamese twins, are a class of artificial neural networks that process two inputs in parallel using identical sub-networks with shared weights to produce comparable output embeddings. The embeddings are then compared using a distance or similarity function to produce a value suitable for verification and matching tasks \cite{SiameseModelIntro}.
 
 The architecture's key characteristic is the weight-sharing constraint between sub-networks, which ensures that similar inputs are mapped to nearby points in the embedding space while dissimilar inputs are mapped to distant points. Additionally, this ensures that the embedding is consistent across both inputs, enabling the model to generalise similarity judgements on unseen pairs.

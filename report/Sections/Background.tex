@@ -381,12 +381,13 @@ $$d(a, b) = \sum^n_{i=1}|a_i - b_i|$$
 This metric derives its name from the grid-like street layout of Manhattan, where the number of blocks measures distances travelled horizontally and vertically. Manhattan distance produces a value that increases with dissimilarity.
 \todo{Put a picture for Manhatten distance}
 
-
-
-\paragraph{Dot Product}
+\paragraph{Dot Product} \label{METRIC:DotProduct}
 The dot product, also known as the inner product between two vectors $a$ and $b$, is computed as:
 
 $$\sum^n_{i=1}a_i \times b_i$$
 
 When used as a similarity metric in Siamese networks, the dot product measures the directional alignment and magnitude correlation between embeddings. A higher dot product indicates a more significant similarity. However, if only directional similarity is desired, the dot product is sensitive to vector magnitudes.
 
+\paragraph{Cosine Distance} \label{METRIC:CosineDistance}
+It is the normalised dot product
+\todo{Explain the cosine distance metric}

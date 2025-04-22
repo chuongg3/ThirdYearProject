@@ -10,7 +10,7 @@ For this approach to succeed, comprehensive training data needs to be collected 
 
 The project methodology is structured around three interconnected stages: data collection, machine learning model development, and integrating everything together.
 
-The first stage involves collecting data, since effective machine learning benefits from representative data. This involves gathering two essential components: a suitable vector encoding of functions that captures their semantics and a metric that quantifies the similarity between function pairs to determine whether merging would be beneficial. \todo{Talk about the merging outcomes of F3M as well}.
+The first stage involves collecting data, since effective machine learning benefits from representative data. This involves gathering two essential components: a suitable vector encoding of functions that captures their semantics and a metric that quantifies the similarity between function pairs to determine whether merging would be beneficial. \todo{Talk about the merging outcomes of F3M as well: Successful merges, new merged function size}.
 
 In the second stage, various machine learning architectures are explored and fine-tuned using the collected data to evaluate their performance in predicting merge suitability. This experimentation allows us to identify the most effective model architecture for function merging.
 
@@ -38,24 +38,24 @@ Prior to collecting any data, it was necessary to determine a suitable storage s
 \paragraph{SQLite vs PostgreSQL} \textbf{\textit{SQLite}} was selected over other SQL solutions, such as \textit{PostgreSQL} primarily for its ease of use and minimal configuration requirements. Unlike PostgreSQL, which typically requires extensive setup, including robust security configurations and server management, SQLite operates as a server-less, file-based database, making it an ideal choice when sensitive data is not a concern. Additionally, SQLite provides a C++ interface, which is the language used to build LLVM and F3M. Finally, its widespread adoption in the Python ecosystem offers an advantage, popular libraries like \textbf{\textit{Pandas}} and \textbf{\textit{TensorFlow}} provide support to read data from SQLite directly, further simplifying the project's implementation by enabling straightforward connections and interactions.
 
 \subsection{Database Design} \label{subsection:DatabaseSchema}
-The design of this database schema is guided by the need to efficiently store and query data, especially as the number of function pairs scales quadratically to the number of functions in a program. 
+The design of this database schema is guided by the need to efficiently store and query data, especially since the number of function pairs scales quadratically to the number of functions in a program.
+
 \begin{figure}[tbh!]
 \centering
 \includegraphics[scale=0.85]{Figures/DataCollectionSchema.pdf}
 \caption{Schema of database used to store collected data using crows foot notation}\label{fig:DatabaseSchema}
 \end{figure}
 
-The \textbf{Benchmarks} table serves as the top-level reference point for all data points. This design ensures that each dataset being evaluated is logically isolated, facilitating independent analyses, comparisons, and debugging if needed.
+
+The schema consists of three primary tables, as illustrated in Figure \ref{fig:DatabaseSchema}. The \textbf{Benchmarks} table serves as the top-level reference point for all data points. This design ensures that each dataset being evaluated is logically isolated, facilitating independent analyses, comparisons, and debugging if needed.
 
 The \textbf{Functions} table captures detailed information about individual functions for each given benchmark. Combining \textit{BenchmarkID} and \textit{FunctionID} as composite keys ensures that function identifiers are scoped locally within each benchmark, preventing cross-function ID collisions. The foreign keys ensure that each function entry is associated with a valid benchmark. All metadata fields remain optional to support flexible, use‑case‑driven data collection.
 
 For each function, the function's name is recorded as a unique key for linking F3M outputs to IR2Vec embeddings. The fingerprint size is computed as the sum of the frequencies of opcodes in HyFM's function fingerprints, as described in section \ref{HyFM:FingerprintDistance}. Function size is then estimated by summing LLVM’s per‑instruction code‑size costs, queried via the TargetTransformInfo interface.
 
-The functions' encoding are defined with a BLOB type to store a pickled Python list representing the function's vector encoding. This decision aims to reduce redundant data transformations since the encodings are generated and used in Python (during training), storing them directly in binary format avoids unnecessary conversions and parsing to and from string representations.
+The functions' encoding are stored as BLOB type to store a pickled Python list representing the function's vector encoding. This decision aims to reduce redundant data transformations since the encodings are generated and used in Python (during training), storing them directly in binary format avoids unnecessary conversions and parsing to and from string representations.
 
-Finally, the \textbf{FunctionPairs} table stores all function pair comparisons. The foreign keys are there to ensure that referenced benchmarks and functions exist. This table only uses a single BenchmarkID alongside two function IDs because function merging is only performed within the same program. This table also stores the distance metrics, AlignmentScore (\ref{METRIC:AlignmentScore}), FrequenceDistance (\ref{HyFM:FingerprintDistance}), MinHashDistance (\ref{METRIC:MinHashDistance}) and merging outcomes. The merging outcomes are optional fields, as if a merging attempt fails, there is no merged function to get information from.
-
-\todo{CHECK the flow of the database design section}
+Finally, the \textbf{FunctionPairs} table stores all function pair comparisons. The foreign keys ensure that referenced benchmarks and functions exist. This table only uses a single BenchmarkID alongside two function IDs because function merging is only performed within the same program. This table also stores the distance metrics, AlignmentScore (\ref{METRIC:AlignmentScore}), FrequenceDistance (\ref{HyFM:FingerprintDistance}), MinHashDistance (\ref{METRIC:MinHashDistance}) and merging outcomes. The merging outcomes are optional fields, as if a merging attempt fails, there is no merged function to get information from.
 
 \subsection{Data Collection Framework}
 The data collection step was split into two steps, one to collect F3M's merging attempts information and one to collect the functions' embeddings from IR2Vec.
@@ -92,7 +92,7 @@ Due to the fact that multiple scripts could be run concurrently while writing to
 To develop machine learning models, the data from the previous step are pre-processed and partitioned to form a representative dataset. Then, two model architectures were designed based on carefully considered rationale. Finally, a framework was established to support efficient training, testing, fine-tuning, and evaluation of these models, streamlining experimentation and providing a reliable structure for iterative improvements.
 
 \subsection{Data Pre-Processing}
-\subsubsection{Data Imbalance}
+\subsubsection{Data Imbalance} \label{Design:DataImbalance}
 A major challenge encountered with the dataset was the overwhelming number of function pairs with an alignment score of 0. In total, there were \textbf{\textit{2.2 billion}} function pairs collected, of which \textbf{\textit{1.67 billion}} samples had an alignment score of 0 (zero-samples), \textbf{\textit{1.7 million}} had an alignment score of 1 (one-samples) and \textbf{\textit{570 million}} has an alignment score between 0 and 1 (non-zero-non-one samples). If this imbalance is not properly addressed, the model would likely learn to predict 0 for most situations to achieve a superficially low error, but produces unhelpful predictions.
 
 This imbalance is mitigated in two ways. First, a large portion of the zero samples is discarded so that the number of remaining zero samples equals the combined total of one samples and non-zero-non-one samples. This balancing strategy reduces the dominance of zero samples and decreases overall training time by lowering the total number of training examples. After this step, the following condition holds true:
@@ -101,10 +101,12 @@ $$Zero\ Samples = One\ Samples + Non\_Zero\_Non\_One\ Samples$$
 Secondly, during model training, each remaining zero-alignment sample is assigned a weight of \textbf{\textit{0.001}}. This weighting means that every non-zero alignment sample contributes 1,000 times as much to the loss function as a zero-alignment sample, thus diminishing the influence of the overly abundant zero samples. In this way, the model is incentivised to learn accurate predictions for non-zero alignment scores.
 
 
-\subsubsection{Data Split}
+\subsubsection{Data Split} \label{Design:DataSplit}
 After collecting and processing the data, we end up with \textbf{\textit{1.1 billion}} function pairs. The order of data is then randomised to make it diverse when encountered by the machine learning model. After which the dataset is split into three smaller SQLite datasets, the training, validation and testing datasets, each making up 70\%, 10\% and 20\% of the pre-processed dataset respectively. The training dataset is used by the model to train itself, while the validation set is used by the model to tune its hyperparameters (discussed in section \ref{subsubsection:HyperparameterTuning}) and the test set is then used to test the model's performance on unseen data.
 
 Pre-splitting the dataset accelerates training by eliminating the need to determine the data split during runtime. Furthermore, maintaining a permanent split throughout the model development stage reduces uncertainty in performance evaluations, as the deterministic nature of the split ensures consistent results, consequently any changes in metrics could be mainly attributed to the model's performance.
+
+\todo{Add a bar graph of the frequence of the values in the dataset}
 
 \subsection{Hyperparameter Tuning} \label{subsubsection:HyperparameterTuning}
 % \subsubsection{Hyperparameter Tuning} \label{subsubsection:HyperparameterTuning}
@@ -189,7 +191,7 @@ The initial integration strategy involved using \textbf{\textit{PyBind}} to load
 
 However, PyBind consistently crashed when attempting to load TensorFlow models. Given these limitations, \textit{TensorFlow's C++ API} was adopted as an alternative solution for loading the trained models. This decision required abandoning the L1 distance Siamese model due to the engineering work required to support its custom layer in the new integration approach.
 
-\subsection{Integrating IR2Vec}
+\subsection{Integrating IR2Vec} \label{Design:IntegratingLLVM}
 Next, since IR2Vec was developed in C++, the initial approach involved incorporating its header files and source code from the official \textit{GitHub} repository. However, while testing the project, errors occurred whenever the compiler attempted to request embeddings from IR2Vec. This compatibility issue likely stemmed from version differences between the LLVM versions used by each project. IR2Vec was based on LLVM 18.1.8 at the time of this project, while F3M used version 18.0.0, necessitating an alternative solution.
 
 The adopted workaround involved pre-generating function encodings using IR2Vec's stand-alone executable for the benchmarks and storing them in text files. During compilation, the system would then only need to parse these files and load the encodings into a map for quick encoding lookup of each function.

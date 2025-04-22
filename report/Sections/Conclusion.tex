@@ -8,4 +8,6 @@
     \item Try a different type of embedding?
     \item Gather data from other function merging heuristics as well
     \item Take into account the profitability of merging: Merged Size < F1 Size + F2 Size
+    \item Custom loss function, focusing on the loss of higher alignment score errors.
+    \item F3M currently remains the most reliable method for maximising merging attempts coverage, but a hybrid strategy that integrates the attention-based scoring may enhance precision without sacrificing merge volume, and reduce the time needed for compilation, as most of the time is down to the model predicting, not the amount of merging attempts.
 \end{itemize}

@@ -1,38 +1,14 @@
-\chapter{Introduction - 10\%}
-\label{cha:intro}
-% Talk about word2vec and then do literature review
-
-% Get the reader up to speed on your project - Dont leave the reader guessing
+\chapter{Introduction - 10\%} \label{cha:intro}
 \section{Motivation}
+It is hard to imagine the benefits of minimising code size in the current technological environment, where many developers de-prioritise it in favour of additional features and quality due to the abundance of memory and processing power. Moore's law, which states that the number of transistors on an integrated circuit doubles every two years, has held true for decades \cite{MooresLaw}. However, code size reduction remains a critical concern across the computing spectrum, from small, interconnected Internet of Things (IoT) computing devices embedded in everyday objects to data centres. While often overlooked in favour of performance optimisations, code size can become a constraint in many scenarios. This is particularly true for resource-constrained devices where memory limitations directly impact functionality, cost, and adoption.
 
-
-% It is hard to imagine what the benefit of minimising code size in the current technological environment where many developers de-prioritise it in favour of additional features and quality due to the abundance of memory and processing power. Moore's law which states that the number of transistors on an integrated circuit doubles every two years, has held true for decades. 
-
-% In the world of embedded systems, code size remains a major concern, where both memory and computation power are severely limited. As our surroundings become more digitised, there will be more embedded systems around us, such as cameras, home control systems, and various IOT devices. The ability to generate smaller binaries can relieve the stress on hardware specifications needed to host embedded software, decreasing costs and lowering e-waste once these devices reach their end-of-life.
-
-% memory typically occupies the largest fraction of chip area, contributing significantly to overall manufacturing costs. Even small increases in memory requirements translate directly to equivalent cost increases, which can lead to substantial profit losses at scale.
-
-
-% In the mobile sector, smaller binaries offer several advantages. Faster loading times contribute to a more responsive user experience, which can extend the lifecycle of the device and enhance overall satisfaction.
-% Moreover, since most services now require dedicated applications for interaction, the size of these binaries may affect a user's willingness to download an app, especially when mobile data connections are unstable and users are in a rush. 
-% Mobile operating system vendors impose limits on the size of binaries that can be downloaded over mobile data to avoid excessive costs and prolonged wait times for users. If an application's binary size surpasses the threshold, the number of downloads decreases. Users tend to install applications when they need them, but if there are barriers to users, then they will tend to a different solution\cite{UberBinarySize}.
-
-% One approach to reducing code size is to eliminate code redundancy by merging similar functions. Identifying function pairs which are similar to each other that can be profitably merged is a challenging problem and an area of ongoing research. When merging functions, there are many things to consider when merging them, as merging two arbitrary functions may introduce more instructions, e.g. Branches, making the merge unprofitable.
-
-% Function merging reduces code redundancy by combining similar functions. However, identifying which function pairs to merge presents significant challenges, as merging dissimilar functions may introduce additional instructions (e.g., branches) to handle the jumps from merged and unmerged instructions, making the merge unprofitable.
-
-% Traditional heuristic approaches to function merging rely on hand-crafted rules with limited ability to capture all the complex patterns across diverse codebases. In contrast, a machine learning approach has the potential to automatically learn the nuanced characteristics of function pairs that are amenable to merging, thereby overcoming the limitations of manual heuristics. 
-
-It is hard to imagine the benefits of minimising code size in the current technological environment, where many developers de-prioritise it in favour of additional features and quality due to the abundance of memory and processing power. Moore's law, which states that the number of transistors on an integrated circuit doubles every two years, has held true for decades \cite{MooresLaw}. However, code size reduction remains a critical concern across the computing spectrum, from IoT devices to data centres. While often overlooked in favour of performance optimisations, code size can become a constraint in many scenarios. This is particularly true for resource-constrained devices where memory limitations directly impact functionality, cost, and adoption.
-
-
-Code size remains a primary concern in embedded systems, where memory and computation power are severely limited. As our surroundings become more digitised, there will be more embedded systems around us, such as cameras, home control systems, and various IOT devices. Memory typically occupies the most significant fraction of chip area in these systems, contributing significantly to overall manufacturing costs \cite{EmbeddedSystemMemoryArea}. Even small increases in memory requirements translate directly to equivalent cost increases, which can lead to substantial cost increases at scale \cite{EmbeddedSystemMemoryCost}. Generating smaller binaries can relieve the stress on hardware specifications needed to host embedded software, decreasing costs and lowering e-waste once these devices reach their end-of-life.
+Code size remains a primary concern in embedded systems, where memory and computation power are severely limited. As our surroundings become more digitised, there will be more embedded systems around us, such as cameras, home control systems, and various IoT devices. Memory typically occupies the most significant fraction of chip area in these systems, contributing significantly to overall manufacturing costs \cite{EmbeddedSystemMemoryArea}. Even small increases in memory requirements translate directly to equivalent cost increases, which can lead to substantial cost increases at scale \cite{EmbeddedSystemMemoryCost}. Generating smaller binaries can relieve the stress on hardware specifications needed to host embedded software, decreasing costs and lowering e-waste once these devices reach their end-of-life.
 
 In the mobile sector, smaller binaries offer several advantages. Faster loading times contribute to a more responsive user experience, extending the device's lifecycle and enhancing overall satisfaction. Moreover, since most services now require dedicated applications for interaction, the size of these binaries may affect a user's willingness to download an app, especially when mobile data connections are unstable, and users are in a rush. Mobile operating system vendors impose limits on the size of binaries that can be downloaded over mobile data to avoid excessive costs and prolonged wait times for users. If an application's size surpasses the threshold, the number of downloads decreases, as users tend to install applications when needed but will seek different solutions when faced with barriers \cite{UberBinarySize}. Application delivery platforms further constrain executable size, with Google Play not allowing compressed APKs larger than 200MB, and Apple's App Store capping executables at 500MB \cite{GoogleBuildSize}\cite{AppleBuildSize}.
 
 Smaller binaries may also improve performance since a larger proportion of a compact binary can fit into cache memory compared to a larger binary. Reducing cache misses minimises the need for frequent system memory accesses, thereby enhancing performance.
 
-Function merging is a promising approach for reducing the binary size by eliminating code redundancy by combining similar functions. However, identifying which function pairs to merge presents significant challenges, as merging dissimilar functions may introduce additional instructions (e.g., branches) to handle the differences between merged functions, potentially making the merge unprofitable.
+Function merging is a promising approach for reducing the binary size by eliminating code redundancy by combining similar functions. This technique works by identifying functions with similar code structures and consolidating them into a single function that preserves the functionality of the original functions. The merged function contains the union of the original functions' behaviour, with conditional logic to handle function-specific paths. However, identifying which function pairs to merge presents significant challenges, as merging dissimilar functions may introduce additional instructions (e.g., branches) to handle the differences between merged functions, potentially making the merge unprofitable.
 
 These optimisations are especially valuable for modern programming paradigms. High-level abstractions in languages like C++ often introduce duplicate code through templates, multiple constructors/destructors, and other specialisations \cite{CPPTemplateCodeDuplication}. Function merging makes these abstractions more practical by eliminating the resulting code redundancy. Unfortunately, production compilers offer limited support for advanced function merging, typically only combining perfectly identical functions \cite{LLVMMergeFunctionsPass}. Traditional heuristic approaches rely on hand-crafted rules with limited ability to capture all the complex patterns across diverse codebases. Research compilers have extended this capability to functions with identical control-flow graphs  and hashes to determine viable merges \cite{FunctionMergingIsomorphicCFG}\cite{F3M:FastFocusedFunctionMerging}. However, the current state-of-the-art system may fail to identify all opportunities to merge code due to hand-written heuristics, which are missing out on more specialised cases. 
 
@@ -55,7 +31,7 @@ In contrast, a machine learning approach has the potential to automatically lear
 % \end{itemize}
 
 
-\section{Aims}
+\section{Aims} \label{section:aims}
 % Project Page
 % \begin{itemize}
 %     \item Try merging millions of different function pairs and measure the effect on code size
@@ -74,18 +50,7 @@ In contrast, a machine learning approach has the potential to automatically lear
 
 % Secondly, a machine learning model should be developed to be suitable for predicting whether two functions are suitable for merging. A bonus would be nice if the model is efficient as well, since compile time is an important metric for compilers.
 
-% Finally, the machine learning model should be integrated into a compiler. The performance should then be evaluated on a set of benchmarks to see the reduction in binary size compared to the default compiler and other state-of-the-art compiler. 
-
-% The main aim of this project is to try and utilise machine learning to predict the profitability of merging two functions in LLVM IR rather than using heuristics, to try and identify more opportunities where the merging is profitable.
-
-% \subsection{Data Collection}
-% During this process, it is necessary to identify the right source of information which is crucial to making the right decisions on whether functions should be merged or not. This process will involve running function merging on multiple benchmarks and collecting the information needed and managing the sheer amount of data generated.
-
-% \subsection{Model Design}
-% Using the data collected from the previous step, we have to design a model architecture/structure which is good at predicting the values we would like through experimentation on a subset of the data.
-
-% \subsection{Integration}
-% The model should then be integrated into the function merging pipeline in the LLVM codebase and tested on benchmarks to see if there are any benefits/losses using this process. This will involve learning how function merging works and integrating the model trained on Python into the C++ codebase.
+% Finally, the machine learning model should be integrated into a compiler. The performance should then be evaluated on a set of benchmarks to see the reduction in binary size compared to the default compiler and other state-o
 
 This project aims to develop and evaluate a machine learning-based approach to improve function merging optimisation by replacing traditional heuristics with a deep learning model. This project will be evaluated in three folds: (1) the ML model's performance against the collected data, (2) the model's performance at identifying suitable candidates for merging, and (3)  the overall code size reduction compared to both production compilers and current state-of-the-art implementation.
 

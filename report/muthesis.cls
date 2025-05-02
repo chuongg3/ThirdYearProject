@@ -342,16 +342,45 @@ Documentation:
 \newif\ifcopyright \newif\iffigurespage \newif\iftablespage \newif\ifsigpage
 \copyrighttrue \figurespagetrue \tablespagetrue \sigpagefalse
 
+% \def\titlep{%
+%   \thispagestyle{empty}%
+%   \null\vskip1in%
+%   \begin{center}
+%     \Huge\uppercase\expandafter{\@title}
+%   \end{center}
+%   \vfill
+%   \begin{center}
+%     \textsc{A \expandafter{\@thesis} submitted to The University of Manchester\\
+%       for the degree of \degreetitle \\
+%       in the Faculty of \@faculty}
+%   \end{center}
+%   \vfill
+%   \begin{center}
+%     \@submitdate
+%   \end{center}
+%   \vfill
+%   \begin{center}
+%     \normalfont
+%     \ifanon@{Student id: \@stuid}\else\@author\fi\\
+%     \end{center}
+%     \vfill
+%     \begin{center}
+%     \expandafter{\@dept}
+%     \end{center}\vskip.5in
+%   \newpage
+% }
+
+
 \def\titlep{%
   \thispagestyle{empty}%
   \null\vskip1in%
   \begin{center}
-    \Huge\uppercase\expandafter{\@title}
+    \Large\uppercase\expandafter{\@title}
   \end{center}
   \vfill
   \begin{center}
     \textsc{A \expandafter{\@thesis} submitted to The University of Manchester\\
-      for the degree of \degreetitle \\
+      for the degree of \degreetitle\\
       in the Faculty of \@faculty}
   \end{center}
   \vfill
@@ -361,7 +390,9 @@ Documentation:
   \vfill
   \begin{center}
     \normalfont
-    \ifanon@{Student id: \@stuid}\else\@author\fi\\
+    \ifanon@{Student id: \@stuid}\else\textbf{\@author}\fi\\
+	\vspace{3ex}
+	Supervised by \@principaladviser
     \end{center}
     \vfill
     \begin{center}

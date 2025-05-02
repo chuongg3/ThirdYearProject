@@ -1,13 +1,63 @@
-\chapter{Conclusion - 10\%}
+\chapter{Conclusion}
+This section concludes this project by summarising the work done and discussing the achievements, reflections and ideas for future works.
 
+\section{Summary} \label{Conc:Summary}
+This project aimed to improve F3M’s function-merging capabilities by building a robust data infrastructure, end-to-end ML pipeline, and seamless integration of alignment score predictions into the function selection process. Initially, a data-collection framework was designed and implemented that automatically gathers two complementary sources of information. First, F3M’s reporting feature was enhanced to directly record each function merging pair and their alignment scores into our database. Second, IR2Vec was modified to generate and label function embeddings using the same mangled function names that F3M produces. These are stored in a database efficiently whose schema relates each function’s metadata and vector representations to their merge attempts.
 
-\section{Future Work}
+After obtaining the data for training, a centralised ML pipeline was developed in Python to accelerate model experimentation and deployment. The raw data undergoes pre-processing to address class imbalances, ensuring the model learns equally from well-aligned and badly-aligned pairs. A single entry-point script orchestrates training, hyperparameter tuning, and evaluation across multiple classifiers, providing a consistent interface for rapid iteration. The curated dataset is serialised into Numpy arrays to further speed up training cycles, allowing models to load data instantly without slow database queries.
 
+The F3M codebase was extended with trained models to leverage alignment predictions for the function selection process. Due to versioning conflicts between IR2Vec and F3M’s LLVM toolchain, embeddings are pre-computed and stored in text files. These embeddings, alongside exported TensorFlow models, are then loaded into the C++ merger via TensorFlow’s C++ API. At runtime, F3M consults the predicted alignment scores to identify the highest-scoring function pairs to attempt function merging, replacing its original heuristics with data-driven decisions.
+
+Finally, this project was evaluated across three dimensions: the ML model’s accuracy on a held-out test dataset, the quality of merges produced by F3M’s hand-crafted heuristic versus our dot-product siamese model-based heuristic and our attention-based heuristic, and the resulting code-size reduction under each strategy. This comprehensive analysis demonstrates that while our project fails to outperform F3M on the overall binary size reduction due to factors outside our control, integrating learned alignment predictions improves merge decisions and yields measurable gains in compiled-code segment shrinkage, showing the value of marrying compiler-level optimisations with machine learning.
+
+\section{Achievements} \label{Conc:Achievements}
+In line with the aim to develop and evaluate an ML-based approach for function merging by predicting alignment scores, this project has successfully fulfilled all objectives outlined in section \ref{section:aims}, demonstrating the following achievements.
+
+\begin{enumerate}
+    \item \textbf{Framework and Data Foundation}: Successfully developed a robust framework utilising modified F3M and IR2Vec for data collection, coupled with SQLite for storage, enabling the successful gathering of a large-scale dataset comprising \textbf{\textit{2.2 billion}} function pair samples with their alignment scores.
+
+    \item \textbf{ML Model Development and Evaluation}: Successfully designed and trained two deep learning models (\textbf{\textit{Dot Product Siamese}} and \textbf{\textit{Multi-Headed Self-Attention}}) to predict alignment scores from function vector representations, directly addressing the core aim of replacing handwritten-heuristics with ML.
+    \begin{itemize}
+        \item The Dot Product model showed reasonable accuracy for scores up to 0.7 but plateaued thereafter.
+        \item The Multi-Headed Self-Attention model demonstrated superior accuracy across the full range of alignment scores.
+    \end{itemize}
+
+    \item \textbf{Training Efficiency Enhancements}: Successfully implemented data pre-processing techniques, including pre-splitting and serialisation, which significantly accelerated the model training process by up to \textbf{\textit{60\%}}, making the development and evaluation process more feasible.
+
+    \item \textbf{Improved Code Size Reduction}: Evaluated the ML approach against F3M. While F3M achieved slightly better overall binary size reduction, this is largely due to increased exception handling metadata, over which function merging had less control. Crucially, the ML models achieved a superior reduction in the compiled-code section size (\textbf{\textit{48\%}} improvement in reduction), the reduction over which function merging has the most direct control. This directly demonstrates the effectiveness of the ML approach in optimising the core code instructions, a key aspect of improving function merging.
+
+    \item \textbf{Enhanced Predictability}: Demonstrated that the ML models offer\textbf{\textit{ more predictable and safer}} code size reduction behaviour compared to F3M. The Dot Product model never resulted in size increases, and the Attention model only did so rarely, contrasting with F3M's variability, particularly on smaller benchmarks.
+
+    \item \textbf{Demonstration of ML Potential}: Demonstrated that machine learning can create more effective merging decisions for function merging based on predicted alignment scores without relying on hand-crafted heuristics for the primary merging decision. This validates the project's core hypothesis while identifying practical challenges like compilation time overhead and integration complexities (e.g., handling newly merged functions, metadata impact) for future consideration.
+\end{enumerate}
+
+\section{Reflection} \label{Conc:Reflection}
+The most significant challenge in this project was managing the enormous scale of the dataset. With 2.2 billion function pairs, the data volume exceeded typical machine learning datasets by orders of magnitude:
 \begin{itemize}
-    \item Try reinforcement learning instead
-    \item Try a different type of embedding?
-    \item Gather data from other function merging heuristics as well
-    \item Take into account the profitability of merging: Merged Size < F1 Size + F2 Size
-    \item Custom loss function, focusing on the loss of higher alignment score errors.
-    \item F3M currently remains the most reliable method for maximising merging attempts coverage, but a hybrid strategy that integrates the attention-based scoring may enhance precision without sacrificing merge volume, and reduce the time needed for compilation, as most of the time is down to the model predicting, not the amount of merging attempts.
+    \item Data operations that would typically be trivial became substantial bottlenecks. Even basic SQL queries to count rows took upwards of five minutes to complete.
+    \item This scale affected two-thirds of the project pipeline, making data collection and model training extremely time-consuming.
 \end{itemize}
+This challenge required good planning to utilise my time effectively. Following my supervisor's advice, this project's schedule was carefully structured around the computational time, maximising the system uptime, ensuring the next processing task was prepared before the current one has completed execution. This approach minimised system idle time and maintained continuous progress. This experience emphasised the importance of planning in data-intensive projects. It led to several engineering innovations, including strategically reducing the dataset without sacrificing model quality, serialising data and implementing multithreading for data loading to speed up the training process. These optimisations proved essential for making the project feasible within the time constraints and provided valuable experience in large-scale data engineering.
+
+Beyond personal challenges, several technical insights emerged during implementation and evaluation. 
+
+The versioning conflict between IR2Vec and F3M's LLVM toolchain created an unexpected integration barrier. This required a compromise solution where function embeddings were pre-computed rather than generated during compilation. While functional, this limitation meant newly merged functions could not be considered for subsequent merging, limiting the evaluation of this project.
+
+Compile-time performance emerged as a significant trade-off. The ML-based approach requires significantly more processing time than F3M, primarily because it exhaustively evaluates all possible function pairs to find the optimal merging candidates. While this project prioritised optimisation quality over compilation speed, a production implementation would need to address this performance gap by incorporating an early pruning stage.
+
+While our ML approaches achieved superior compiled-code section size reduction (48\% improvement over F3M), the overall binary size reduction was slightly less impressive. This disparity stems from a consequence of function merging, as functions combine, they develop more complex flow while needing to maintain the original exception-handling behaviours, which increases metadata requirements.
+
+This observation highlights how the compiled-code section, where function merging has direct influence, showed clear benefits from our ML approach. However, these gains were partially offset by increases in exception-handling metadata. This demonstrates the interconnected nature of compiler optimisations, where improvements in one area can have cascading effects on others.
+
+The enhanced predictability of our ML models represents another significant achievement. Unlike F3M, which occasionally increased code size on smaller benchmarks, our Dot Product model never produced size increases, and the Attention model rarely did so. This consistency offers compelling value for production environments where predictable behaviour may be as important as optimisation potential.
+
+\section{Future Work} \label{Conc:FutureWork}
+Building on the findings and limitations identified in this project, several promising research directions could further advance machine learning-based function merging optimisation.
+
+\paragraph{Reinforcement Learning} The current supervised learning approach could be complemented by a reinforcement learning strategy that directly optimises for merging profitability. This approach would involve developing a more accurate function size calculation model and training an agent to explore the vast space of potential function pairs. The agent would receive negative rewards for unprofitable merges and positive rewards for profitable ones, gradually learning optimal merging policies through interaction with the compiler environment. This data-driven strategy could potentially discover non-obvious merging opportunities that both hand-crafted heuristics and our current supervised models might miss.
+
+\paragraph{Model Enhancement} A natural evolution of our current model would incorporate function size awareness directly into the prediction mechanism. An analysis could be performed on the role function sizes play on the profitability of merging. A model that explicitly accounts for both alignment quality and function size could make more informed decisions about which pairs warrant merging attempts, potentially improving both compilation time and optimisation outcomes.
+
+\paragraph{Hybrid Method} To address the compilation time overhead identified, a hybrid approach combining F3M's efficient search space reduction with our ML models' prediction accuracy could offer the best of both worlds. This would use F3M's locality-sensitive hashing to identify promising function clusters quickly, then apply the ML approach to functions within the same band to select the optimal merging candidate. This approach would substantially reduce the number of pairs requiring expensive alignment score predictions while maintaining high-quality merging decisions. Alternatively, a new multi-tiered profitable analysis can be developed to reduce the search space for the ML approach.
+
+\paragraph{Error Handling} Our evaluation revealed that increased exception-handling metadata partially offset improvements in compiled-code section size. This suggests a valuable research direction explicitly focused on understanding and optimising how function merging affects exception-handling requirements to propose a new merging technique that maintains proper error handling while minimising metadata growth. This targeted approach would help ensure code size reductions translate more directly to overall binary size improvements.

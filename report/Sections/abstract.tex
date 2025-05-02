@@ -1,6 +1,14 @@
-\abstracttitle
+% \abstracttitle
 % Single spacing can be turned on for the abstract
 %
-{\singlespacing
+\singlespacing
+{
+
 % ABSTRACT
+
+Code size reduction remains critical across computing devices despite increasing hardware capabilities, particularly for embedded systems and mobile applications where memory constraints impact functionality and costs. Function merging addresses this challenge by combining similar functions to eliminate redundancy, but identifying optimal function pairs to merge remains an ongoing research field.
+This paper proposes using machine learning to improve function merging decisions, replacing the hand-crafted heuristics used in previous state-of-the-art implementations like F3M with models capable of capturing complex relationships between functions. Our approach focuses on the alignment score as the primary metric for assessing function similarity, as it effectively quantifies structural similarity for merging.
+A robust data collection framework was developed to gather information on 2.2 billion function pair merges and their performance across diverse benchmarks. Two neural network architectures, a dot product Siamese model and a multi-headed self-attention model, were designed and trained using the collected dataset to predict alignment scores between function pairs.
+F3M was modified to leverage these trained models by predicting the alignment score between a function and all candidate functions. Merging is only attempted with the highest-scoring candidate whose score exceeds a predetermined threshold. Evaluation on SPEC CPU 2006 and 2017 benchmarks demonstrates that our approach improves F3M's compiled-code segment size reduction (the portion of the binary containing actual machine instructions over which function merging has direct control) by 48\% (4.4\% versus 2.9\% reduction).
+While the models achieve slightly lower overall binary size reduction compared to F3M due to increased exception handling metadata required for the complex control flow of merged functions, they exhibit significantly more reliable behaviour, rarely producing binaries larger than the baseline LLVM's compilation, a notable improvement over F3M's occasional size increases.
 }

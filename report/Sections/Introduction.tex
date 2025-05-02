@@ -1,93 +1,37 @@
-\chapter{Introduction - 10\%} \label{cha:intro}
+\chapter{Introduction} \label{cha:intro}
 \section{Motivation}
-It is hard to imagine the benefits of minimising code size in the current technological environment, where many developers de-prioritise it in favour of additional features and quality due to the abundance of memory and processing power. Moore's law, which states that the number of transistors on an integrated circuit doubles every two years, has held true for decades \cite{MooresLaw}. However, code size reduction remains a critical concern across the computing spectrum, from small, interconnected Internet of Things (IoT) computing devices embedded in everyday objects to data centres. While often overlooked in favour of performance optimisations, code size can become a constraint in many scenarios. This is particularly true for resource-constrained devices where memory limitations directly impact functionality, cost, and adoption.
+It is hard to imagine the benefits of minimising code size in the current technological environment, where many developers de-prioritise it in favour of additional features and quality due to the abundance of memory and processing power. Moore's law states that the number of transistors on an integrated circuit doubles every two years and has held for decades \cite{MooresLaw}. However, code size reduction remains a critical concern across the computing spectrum, from small, interconnected Internet of Things (IoT) computing devices embedded in everyday objects to data centres. While often overlooked in favour of performance optimisations, code size can become a constraint in many scenarios. This is particularly true for resource-constrained devices where memory limitations directly impact functionality, cost, and adoption.
 
-Code size remains a primary concern in embedded systems, where memory and computation power are severely limited. As our surroundings become more digitised, there will be more embedded systems around us, such as cameras, home control systems, and various IoT devices. Memory typically occupies the most significant fraction of chip area in these systems, contributing significantly to overall manufacturing costs \cite{EmbeddedSystemMemoryArea}. Even small increases in memory requirements translate directly to equivalent cost increases, which can lead to substantial cost increases at scale \cite{EmbeddedSystemMemoryCost}. Generating smaller binaries can relieve the stress on hardware specifications needed to host embedded software, decreasing costs and lowering e-waste once these devices reach their end-of-life.
+Code size remains a primary concern in embedded systems, where memory and computation power are severely limited. As our surroundings become more digitised, more embedded systems will be around us, such as cameras, home control systems, and various IoT devices. Memory typically occupies the most significant fraction of chip area in these systems, contributing significantly to overall manufacturing costs \cite{EmbeddedSystemMemoryArea}. Even small increases in memory requirements translate directly to equivalent cost increases, which can lead to substantial cost increases at scale \cite{EmbeddedSystemMemoryCost}. Generating smaller binaries can relieve the stress on hardware specifications needed to host embedded software, decreasing costs and lowering e-waste once these devices reach their end-of-life.
 
-In the mobile sector, smaller binaries offer several advantages. Faster loading times contribute to a more responsive user experience, extending the device's lifecycle and enhancing overall satisfaction. Moreover, since most services now require dedicated applications for interaction, the size of these binaries may affect a user's willingness to download an app, especially when mobile data connections are unstable, and users are in a rush. Mobile operating system vendors impose limits on the size of binaries that can be downloaded over mobile data to avoid excessive costs and prolonged wait times for users. If an application's size surpasses the threshold, the number of downloads decreases, as users tend to install applications when needed but will seek different solutions when faced with barriers \cite{UberBinarySize}. Application delivery platforms further constrain executable size, with Google Play not allowing compressed APKs larger than 200MB, and Apple's App Store capping executables at 500MB \cite{GoogleBuildSize}\cite{AppleBuildSize}.
+In the mobile sector, smaller binaries offer several advantages. Faster loading times contribute to a more responsive user experience, extending the device's lifecycle and enhancing overall satisfaction. Mobile operating system vendors limit the size of binaries that can be downloaded over mobile data to avoid excessive costs and prolonged wait times for users. Suppose an application's size surpasses the threshold. The number of downloads will decrease, as users tend to install applications when needed but seek different solutions when faced with barriers \cite{UberBinarySize}. Application delivery platforms further constrain executable size, with Google Play not allowing compressed APKs larger than 200MB and Apple's App Store capping executables at 500MB \cite{GoogleBuildSize}\cite{AppleBuildSize}.
 
-Smaller binaries may also improve performance since a larger proportion of a compact binary can fit into cache memory compared to a larger binary. Reducing cache misses minimises the need for frequent system memory accesses, thereby enhancing performance.
+% Smaller binaries may also improve performance since a larger proportion of a compact binary can fit into cache memory compared to a larger binary. Reducing cache misses minimises the need for frequent system memory accesses, thereby enhancing performance.
 
-Function merging is a promising approach for reducing the binary size by eliminating code redundancy by combining similar functions. This technique works by identifying functions with similar code structures and consolidating them into a single function that preserves the functionality of the original functions. The merged function contains the union of the original functions' behaviour, with conditional logic to handle function-specific paths. However, identifying which function pairs to merge presents significant challenges, as merging dissimilar functions may introduce additional instructions (e.g., branches) to handle the differences between merged functions, potentially making the merge unprofitable.
+Function merging is a promising approach for reducing the binary size by eliminating code redundancy. This technique works by identifying functions with similar code structures and consolidating them into a single function while preserving the functionality of the original functions. The merged function contains the union of the original functions' behaviour, with conditional logic to handle function-specific paths. However, identifying which function pairs to merge presents significant challenges, as merging dissimilar functions may introduce additional instructions (e.g., branches) to handle the differences between merged functions, potentially making the merge unprofitable.
 
-These optimisations are especially valuable for modern programming paradigms. High-level abstractions in languages like C++ often introduce duplicate code through templates, multiple constructors/destructors, and other specialisations \cite{CPPTemplateCodeDuplication}. Function merging makes these abstractions more practical by eliminating the resulting code redundancy. Unfortunately, production compilers offer limited support for advanced function merging, typically only combining perfectly identical functions \cite{LLVMMergeFunctionsPass}. Traditional heuristic approaches rely on hand-crafted rules with limited ability to capture all the complex patterns across diverse codebases. Research compilers have extended this capability to functions with identical control-flow graphs  and hashes to determine viable merges \cite{FunctionMergingIsomorphicCFG}\cite{F3M:FastFocusedFunctionMerging}. However, the current state-of-the-art system may fail to identify all opportunities to merge code due to hand-written heuristics, which are missing out on more specialised cases. 
+These optimisations are especially valuable for modern programming paradigms. High-level abstractions in languages like C++ often introduce duplicate code through templates, multiple constructors/destructors, and other specialisations \cite{CPPTemplateCodeDuplication}. Function merging makes these abstractions more practical by eliminating the resulting code redundancy. Unfortunately, production compilers offer limited support for advanced function merging, typically only combining perfectly identical functions \cite{LLVMMergeFunctionsPass}, with further experimental improvement to merge functions with identical control-flow graphs \cite{FunctionMergingIsomorphicCFG}. Research compilers have extended these capabilities by using fingerprints and hashes to identify more viable function pairs to merge \cite{FunctionMergingSequenceAlignment, F3M:FastFocusedFunctionMerging}. However, these current state-of-the-art systems use handwritten heuristics, like FMSA's fingerprint-based and F3M's hash-based similarity metrics, to estimate the similarity between function pairs. These approaches can lead to missed merging opportunities, particularly in specialised cases.
 
-In contrast, a machine learning approach has the potential to automatically learn the nuanced characteristics of function pairs that are amenable to merging, thereby overcoming the limitations of manual heuristics. By analysing patterns across thousands of function pairs, ML models can identify subtle indicators of profitable merging that might be missed from human observation. Improving function merging techniques through such approaches represents a critical opportunity to address the growing challenges of code size across computing domains, enabling more efficient resource utilisation without sacrificing functionality or performance.
-
-% \begin{itemize}
-%     \item LLVM is a compiler and toolchain system used
-%     \item LLVM relies on different passes during compilation to convert the source language into the target language
-%     \item LLVM compilation has three main stages
-%     \begin{itemize}
-%         \item Optimisation and Conversion of Source Language to LLVM IR
-%         \item LLVM IR Optimisation
-%         \item LLVM IR to Target Language (Conversion and Optimisation)
-%     \end{itemize}
-%     \item LLVM IR is the intermediate representation used by the system, allowing the porting from different source language and porting to different targets as easy as possible. (Show an example graph and explain why this simplifies this) - SHOW WHY LLVM IR is important
-%     \item This project focuses on merging LLVM IR functions, to remove redundant code, decreasing binary sizes.
-%     \item There is currently a heuristic version of the project (provide the link to paper or repo), but a very big issue is that the complexity is exponential with regards to the number of functions.
-%     \item This is caused by the heuristic algorithm having to calculate a certain score for every possible function pair combination, and having to do some operation to calculate the profitability of merging the function.
-%     \item If it is not profitable to merge the function, the system will ignore it.
-% \end{itemize}
-
+In contrast, a machine learning approach has the potential to automatically learn to predict function pair similarity more accurately by capturing complex patterns that determine which functions can be profitably merged rather than relying on hand-crafted metrics. On multiple occasions, machine learning and deep learning have outperformed human-designed heuristics when designing code-related heuristics \cite{GPUCompilerML, RegisterAllocationRL, LoopUnrollingML}. By analysing patterns across millions of function pairs, ML models can identify subtle indicators of similarity that might be missed through human observation.
 
 \section{Aims} \label{section:aims}
-% Project Page
-% \begin{itemize}
-%     \item Try merging millions of different function pairs and measure the effect on code size
-%     \item Use machine learning to learn a code representation that is useful for merging decisions, i.e. functions that merge well have similar representations
-%     \item Modify FMSA to only merge functions that are predicted to merge well.
-% \end{itemize}
-% Current
-% \begin{itemize}
-%     \item Run function merging to collect data regarding function pairs.
-%     \item Design a ML model which is able to predict the alignment score of two functions given their encodings
-%     \item Integrate a machine learning model that predicts mergeability into a compiler and compare it's affect on code size compared to other state-of-the-art implementations.
-% \end{itemize}
-
-
-% This project involves three broad development steps. First, run function merging on multiple benchmarks to collect data on the merging performance. There needs to be an efficient way to store the data as well as the number of function pairs grows quadratically with the number of functions in a program.
-
-% Secondly, a machine learning model should be developed to be suitable for predicting whether two functions are suitable for merging. A bonus would be nice if the model is efficient as well, since compile time is an important metric for compilers.
-
-% Finally, the machine learning model should be integrated into a compiler. The performance should then be evaluated on a set of benchmarks to see the reduction in binary size compared to the default compiler and other state-o
-
-This project aims to develop and evaluate a machine learning-based approach to improve function merging optimisation by replacing traditional heuristics with a deep learning model. This project will be evaluated in three folds: (1) the ML model's performance against the collected data, (2) the model's performance at identifying suitable candidates for merging, and (3)  the overall code size reduction compared to both production compilers and current state-of-the-art implementation.
+This project aims to develop and evaluate a machine learning-based approach to improve function merging optimisation by replacing the hand-designed function pair similarity heuristic with a deep learning model that predicts the score. 
 
 To achieve these aims, this project encompasses the following objectives:
-\begin{itemize}
-    \item Collect function merging performance data across multiple benchmarks, implementing efficient storage solutions to address the quadratic growth of function pairs.
-    \item Design and train a deep learning model that outperforms traditional hand-crafted heuristics for function merging decisions.
-    \item Integrate the trained ML model into an LLVM function merging pass and evaluate its effectiveness through code size reduction measurements on real-world applications.
-\end{itemize}
+\begin{enumerate}
+    \item Design a framework to collect function pair similarity scores across multiple benchmarks, implementing efficient storage solutions to store 2.2 billion function pairs' data.
+    \item Design and train a deep learning model that can reliably predict similarity scores between a pair of functions with high accuracy.
+    \item Integrate the trained ML model into an LLVM function merging pass for better merging-decision heuristics to create a better function merging pass.
+\end{enumerate}
 
-
-% \subsection{Objective}
-% Analyse functions that are actually good for merging
-% Compare the best model structures for prediction
-% Feasibility of using ML for this goals
-
-% Decrease the overall binary size compared to the baseline by 5\%.
-
-% The implementation should be able to decrease the dot text size of the binary on average of 5\% as that is the part of the code we will be able to influence the most.
-
-
-% Evaluate the impact of the machine learning approach on the ability to detect mergebility. 
-
-% The number of functions that are predicted to be good should be right 80\% of the time. \textbf{OR} The percentage of profitable functions compared to total number of good function pairs should be better than f3m.
-
-
-
+This project's achievements will be evaluated in three folds: (1) the trained model's ability to correctly predict how similar two functions are, (2) the system's performance at identifying suitable candidates for merging by translating the prediction scores into merging decisions, and (3) the overall code size reduction compared to both production compilers and current state-of-the-art implementation.
 
 
 \section{Report Structure}
-This paper is structured in the following manner:
+The rest of the paper is structured as follows:
 \begin{itemize}
-    \item \textbf{Chapter 1} - Introduces the motivation for code size reduction, the fundamental concepts behind function merging, and the potential of machine learning-based function merging approaches. This chapter concludes by defining the specific aims and objectives of the project.
-    \item \textbf{Chapter 2} - Introduces the LLVM compiler infrastructure project in section 2.1. Section 2.2 examines different implementations of function merging, including previous state-of-the-art realisations. Section 2.3 covers this project's machine learning foundations, including exploring other applications of machine learning to compilers.
-    \item \textbf{Chapter 3} - Details the design and methodology employed in this project, including decisions made to meet project objectives.
-    \item \textbf{Chapter 4} - Presents the experimental results obtained from implementing and testing the machine learning-based function merging approach.
-    \item \textbf{Chapter 5} - Evaluate the results against the project objectives, analysing the model's performance compared to traditional heuristics and assessing code size reduction achievements.
-    \item \textbf{Chapter 6} - Summarises the key findings, discusses limitations, and proposes ideas for future work.
+    \item \textbf{Chapter 2} - Introduces the LLVM compiler infrastructure project in section \ref{Background:LLVM}. Section \ref{Background:RelatedWork} examines different implementations of function merging, including previous state-of-the-art realisations. Sections \ref{Background:ML} and \ref{Background:NeuralNetworks} cover this project's machine learning foundations, including exploring other applications of machine learning to compilers.
+    \item \textbf{Chapter 3} - Details the design and methodology decisions this project employs to meet the project objectives. Section \ref{Design:GeneralDesign} discusses the overall design of the project, section \ref{Design:DataCollection} discusses designs of the data collection process, section \ref{Design:ModelDevelopment} goes through the design of the models and techniques employed for training the models. Section \ref{Design:SystemIntegration} integrates the trained models into the function merging pass and \ref{Design:ArtifactoryAndSetUp} talks about the setup script and artifacts provided by this project.
+    \item \textbf{Chapter 4} - Describes the environment used to evaluate this project and evaluates this project as discussed in section \ref{section:aims}. The machine learning models' accuracy is assessed in section \ref{Eval:MLAccuracy}, the quality of the merges is then evaluated in section \ref{Eval:MergeQuality} and finally, the overall code size reduction is discussed in section \ref{Eval:CodeSizeReduction}.
+    \item \textbf{Chapter 5} - Concludes the whole project, summarising the work carried out throughout the whole project in section \ref{Conc:Summary},  discusses this project's achievements in section \ref{Conc:Achievements}, reflects on the work done in section \ref{Conc:Reflection} and suggest future works in section \ref{Conc:FutureWork}.
 \end{itemize}
-
